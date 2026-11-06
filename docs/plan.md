@@ -33,6 +33,14 @@ Evidence: `out/preservation-qemu/20261106T230156.348210Z`. This is not Apple use
 Next: bootloader placement/recovery and physical DTB/ramdisk/display handoff remain
 unverified. Existing offline candidate is unapproved and uses the previous kernel.
 
+Full-shim milestone: the unchanged Image from CI 42303381326 also reached PID1
+using the real vendor prefix and captured stock DTB (only initrd address values
+edited in the local copy). Evidence `out/preservation-qemu/20261106T231916.280563Z`:
+120 seconds, boot arguments match all 1152 bytes, no visible panic. Virtual firmware
+models watchdog return and GIC initialization. Live FDT was read and hash-verified
+without a phone write/reboot. Next: verify ABL support/placement and recovery before
+considering a phone RAM boot. Neither a physical boot nor dual boot is established.
+
 Status date of earlier-owner sections: 2026-10-27 (12:15).
 
 ## Priorities (2026-10-27 20:55, owner)

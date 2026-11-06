@@ -20,6 +20,44 @@ import mkadt
 import mkpayload
 
 
+def shim_fdt(start, end):
+    """Minimal standard FDT; tests the shim's actual /chosen parser."""
+    strings = b"linux,initrd-start\0linux,initrd-end\0"
+    def padded(value):
+        return value + bytes((-len(value)) % 4)
+    def node(name):
+        return struct.pack(">I", 1) + padded(name.encode() + b"\0")
+    def prop(name_offset, value):
+        return struct.pack(">IIIQ", 3, 8, name_offset, value)
+    tree = (node("") + node("chosen") + prop(0, start) + prop(19, end)
+            + struct.pack(">III", 2, 2, 9))
+    header = struct.pack(">10I", 0xd00dfeed, 56 + len(tree) + len(strings),
+                         56, 56 + len(tree), 40, 17, 16, 0, len(strings), len(tree))
+    return header + bytes(16) + tree + strings
+
+
+def checked_shim(directory):
+    reports = list(directory.rglob("report.json"))
+    if len(reports) != 1:
+        raise ValueError("Select one complete shim audit artifact")
+    report = json.loads(reports[0].read_text())
+    def digest(path):
+        return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+    if (report.get("complete_shim_built") is not True
+            or report.get("internal_storage_uefi_probe_paths_linked") is not False):
+        raise ValueError("Expected the complete minimal preservation shim")
+    for field, relative in (("runtime_policy_sha256", "userland/preservation-shim/preserve_payload.h"),
+                            ("preservation_main_sha256", "userland/preservation-shim/main.c")):
+        if report.get(field) != digest(REPO / relative):
+            raise ValueError("Shim artifact differs from current source")
+    if report.get("shim_patches") != {p.name: digest(p) for p in (REPO / "patches/shim").glob("*.patch")}:
+        raise ValueError("Shim patch provenance mismatch")
+    image = reports[0].parent / "complete/Image"
+    if hashlib.sha256(image.read_bytes()).hexdigest() != report.get("shim_image_sha256"):
+        raise ValueError("Shim image digest mismatch")
+    return image, report
+
+
 def font_address(blob):
     count = struct.unpack_from("<I", blob, 16)[0]
     at = 32
@@ -46,9 +84,14 @@ def main():
     parser.add_argument("--ramroot-artifact", type=Path, required=True)
     parser.add_argument("--seconds", type=int, default=20)
     parser.add_argument("--cpu", choices=("cortex-a76", "max"), default="cortex-a76")
+    parser.add_argument("--shim-artifact", type=Path, help="Execute the real shim instead of entering XNU directly")
+    parser.add_argument("--vendor-prefix", type=Path, help="Local vendor ramdisk bytes to prepend in shim mode")
+    parser.add_argument("--handoff-fdt", type=Path, help="Local stock FDT; replace only its initrd addresses for emulation")
     args = parser.parse_args()
-    if not 1 <= args.seconds <= 60:
-        raise ValueError("Choose a bounded 1..60 second emulator run")
+    if not 1 <= args.seconds <= 180:
+        raise ValueError("Choose a bounded 1..180 second emulator run")
+    if (args.vendor_prefix or args.handoff_fdt) and not args.shim_artifact:
+        raise ValueError("A vendor prefix or handoff FDT requires complete-shim mode")
     subprocess.run([sys.executable, str(REPO / "scripts/kernel/verify-preservation-artifact.py"),
                     str(args.kernel_artifact)], check=True)
     kernel = args.kernel_artifact / "kernel.development.negroni"
@@ -58,9 +101,9 @@ def main():
         raise ValueError("RAM-root digest mismatch")
     output = REPO / "out/preservation-qemu" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
     output.mkdir(parents=True, exist_ok=False)
-    # This is a virtual-board payload, deliberately outside the phone profile.
-    # The physical preservation shim rejects this lower, smaller RAM window.
-    physical, memory_size = 0x50000000, 0x40000000
+    # Direct mode uses a lower RAM window rejected by the phone shim. Full-shim
+    # mode retains its required high bank, but both use QEMU's virtual GIC/timer.
+    physical, memory_size = (0x840000000, 0xc0000000) if args.shim_artifact else (0x50000000, 0x40000000)
     tree = mkadt.build(board="negroni", qemu=True, dram=(physical, memory_size), ufs=False)
     tree_path = output / "qemu-only.adt"
     tree_path.write_bytes(adt.serialize(tree))
@@ -102,6 +145,39 @@ def main():
     stub_pa = 0x40200000
     (output / "stub.bin").write_bytes(struct.pack("<4I2Q", 0x58000080, 0x580000a1,
         0xd61f0020, 0xd503201f, ba_pa, entry + delta))
+    shim_info = None
+    if args.shim_artifact:
+        shim, shim_info = checked_shim(args.shim_artifact)
+        shim_pa, initrd_pa, fdt_pa = 0xa8008000, 0xa9000000, 0xb0000000
+        prefix = args.vendor_prefix.read_bytes() if args.vendor_prefix else b""
+        if len(prefix) % 8 or len(prefix) > 64 * 1024**2:
+            raise ValueError("Vendor prefix must be aligned and bounded")
+        combined = prefix + payload + bytes(4096)
+        if initrd_pa + len(combined) > fdt_pa:
+            raise ValueError("Combined ramdisk overlaps the synthetic FDT")
+        (output / "combined-initrd.bin").write_bytes(combined)
+        fdt_blob = shim_fdt(initrd_pa, initrd_pa + len(combined))
+        if args.handoff_fdt:
+            spec = importlib.util.spec_from_file_location("handoff", REPO / "scripts/backup/inspect-android-handoff.py")
+            handoff = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(handoff)
+            fdt_blob = bytearray(args.handoff_fdt.read_bytes())
+            ranges = handoff.properties(fdt_blob, locations=True)
+            for name, value in (("linux,initrd-start", initrd_pa), ("linux,initrd-end", initrd_pa + len(combined))):
+                offset, width = ranges[("/chosen", name)]
+                if width not in (4, 8):
+                    raise ValueError("Unsupported live FDT initrd width")
+                fdt_blob[offset:offset + width] = value.to_bytes(width, "big")
+            handoff.summary(fdt_blob)
+        (output / "shim-handoff.dtb").write_bytes(fdt_blob)
+        (output / "stub.bin").write_bytes(struct.pack("<4I2Q", 0x58000080, 0x580000a1,
+            0xd61f0020, 0xd503201f, fdt_pa, shim_pa))
+        monitor = REPO / "userland/preservation-shim/qemu-monitor.S"
+        subprocess.run(["aarch64-linux-gnu-as", str(monitor), "-o", str(output / "monitor.o")], check=True)
+        subprocess.run(["aarch64-linux-gnu-ld", "-Ttext=0x40200000", "-e", "_start",
+                        str(output / "monitor.o"), "-o", str(output / "monitor.elf")], check=True)
+        subprocess.run(["aarch64-linux-gnu-objcopy", "-O", "binary", str(output / "monitor.elf"),
+                        str(output / "stub.bin")], check=True)
     spec = importlib.util.spec_from_file_location("qemu_screen", REPO / "external/slop/tools/qemu-sweet.py")
     screen_tools = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(screen_tools)
@@ -115,6 +191,16 @@ def main():
                "-device", f"loader,file={output / 'ram.bin'},addr={physical:#x},force-raw=on",
                "-device", f"loader,file={output / 'stub.bin'},addr={stub_pa:#x},force-raw=on",
                "-device", f"loader,addr={stub_pa:#x},cpu-num=0"]
+    if args.shim_artifact:
+        # Large sparse guest address space, demand-paged; no preallocation. The
+        # kernel manages only its 3 GiB high bank. No host disk is a guest drive.
+        command[command.index("4G")] = "40G"
+        command[command.index("virt,gic-version=3")] = "virt,gic-version=3,secure=on,memory-backend=guest-ram"
+        command += ["-object", "memory-backend-ram,id=guest-ram,size=40G,reserve=off,prealloc=off"]
+        index = command.index(f"loader,file={output / 'ram.bin'},addr={physical:#x},force-raw=on")
+        command[index] = f"loader,file={shim},addr={shim_pa:#x},force-raw=on"
+        command += ["-device", f"loader,file={output / 'combined-initrd.bin'},addr={initrd_pa:#x},force-raw=on",
+                    "-device", f"loader,file={output / 'shim-handoff.dtb'},addr={fdt_pa:#x},force-raw=on"]
     (output / "command.json").write_text(json.dumps(command, indent=2) + "\n")
     report = {"phone_contacted": False, "host_disks_or_usb_attached_to_guest": False,
               "kernel_sha256": hashlib.sha256(kernel.read_bytes()).hexdigest(),
@@ -123,6 +209,16 @@ def main():
               "emulation_only_ram_window": [hex(physical), hex(memory_size)],
               "physical_phone_boot_profile_compatible": False, "pid1_observed": False,
               "device_boot_approved": False, "payload": info}
+    report["complete_shim_entry_selected"] = bool(args.shim_artifact)
+    if shim_info:
+        report.update(shim_image_sha256=shim_info["shim_image_sha256"],
+                      gunyah_watchdog_service_emulated=True,
+                      virtual_monitor_sha256=hashlib.sha256(monitor.read_bytes()).hexdigest(),
+                      vendor_prefix_sha256=hashlib.sha256(prefix).hexdigest(),
+                      vendor_prefix_bytes=len(prefix), synthetic_fdt=not bool(args.handoff_fdt),
+                      handoff_fdt_sha256=hashlib.sha256(fdt_blob).hexdigest(),
+                      source_fdt_sha256=hashlib.sha256(args.handoff_fdt.read_bytes()).hexdigest() if args.handoff_fdt else None,
+                      actual_abl_placement_verified=False)
     process = None
     try:
         with (output / "stderr.txt").open("w") as errors:
@@ -167,6 +263,10 @@ def main():
                     break
                 time.sleep(0.1)
             qmp("stop")
+            if args.shim_artifact:
+                captured = output / "shim-bootargs.bin"
+                qmp("pmemsave", val=ba_pa, size=len(boot_args), filename=str(captured))
+                report["shim_boot_arguments_match_reference"] = captured.read_bytes() == boot_args
             (output / "registers.txt").write_text(qmp("human-monitor-command", **{"command-line": "info registers"}))
             qmp("pmemsave", val=video[0], size=1080 * 2412 * 4, filename=str(output / "fb.raw"))
             raw = (output / "fb.raw").read_bytes()
@@ -190,7 +290,9 @@ def main():
     print(json.dumps({k: report[k] for k in ("pid1_observed", "device_boot_approved")}))
     if "capture_error" in report:
         print("Capture error:", report["capture_error"])
-    if not report["pid1_observed"]:
+    if (not report["pid1_observed"] or "capture_error" in report
+            or report.get("screen_has_panic")
+            or (args.shim_artifact and not report.get("shim_boot_arguments_match_reference"))):
         raise SystemExit(2)
 
 

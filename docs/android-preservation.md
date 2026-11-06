@@ -4,6 +4,12 @@ Owner requirement, 2026-11-06: keep the existing Android boot and data. The owne
 unlocked, rooted OnePlus 10 Pro connected by USB. The owner ran the read-only inventory;
 results were read from `out/android-inventory`. Do not inherit the previous owner's backups.
 
+Current milestone (2026-11-07): the complete unchanged phone shim reaches the minimal
+HFS RAM root's standalone PID 1 in diskless QEMU, with the real vendor-ramdisk prefix
+and captured stock DTB (initrd addresses adjusted offline). This is not full iOS.
+Watchdog and interrupt firmware are modeled; ABL's actual temporary-boot placement and recovery are still
+unverified. No experimental image has been booted or flashed on this phone.
+
 Verified inventory: NE2213 / OP516FL1 / taro, `NE2213_16.0.3.530(EX01)`, Android 16,
 security patch 2026-06-01, unlocked (`ro.boot.flash.locked=0`), active slot `_a`, Magisk
 `uid=0`, file-based encryption. `/data` is F2FS on dm-72 with inline encryption;
@@ -59,10 +65,10 @@ allocation. Static assertions require 1152-byte boot_args and memSizeActual at 0
 Direct-loader run `42299680091` passed AArch64 object compilation for negroni and sweet:
 https://github.com/MrShmallow99/iOSPlus10/actions/runs/42299680091
 
-The patch is stored in the parent repo; pinned submodule sources remain unchanged. Next:
-compile and audit the complete shim, validate how the stock bootloader presents the combined
-ramdisk and DTB for a temporary boot, and plan a recoverable observation path. The existing
-generic test-boot script remains blocked. No execution of this RAM root has been observed.
+The patch is stored in the parent repo; pinned submodule sources remain unchanged.
+Later work compiled the complete shim and reached PID 1 in emulation; see the offline
+loader/emulator progress below. Physical temporary-boot handoff and a recoverable
+observation path remain unverified. The generic test-boot script remains blocked.
 
 ### Successful kernel build and downloaded artifact
 
@@ -195,6 +201,31 @@ Shrinking userdata or repurposing another partition is not the chosen approach.
 ## Host access
 
 ### Offline loader and emulator progress
+
+Full shim integration passed in the 120-second capture
+`out/preservation-qemu/20261106T231916.280563Z`: PID1 marker observed, zero unknown
+glyphs, no visible panic, and all 1152 shim-produced boot-argument bytes match the
+reference. This starts at the unchanged Image from shim CI 42303381326, not directly
+at XNU. The source payload uses the required high 3 GiB bank, virtual GIC/timer ADT,
+and emulator-only hardware disable switches. Real vendor prefix: 22,603,096 bytes.
+
+Read-only live FDT capture `out/android-handoff/20261106T231318.768974Z` is 1,181,468
+bytes, SHA-256 `689dd6856fd967c07e97276b5d3c269ad2ab1327451711af3de454dda64c0167`,
+verified before/on-host/after. Stock initrd addresses are `0xb690d000..0xb7ffee10`;
+the FDT reports bank `0x840000000 + 0xc0000000`. These are stock Android observations,
+not temporary v2 boot placement. The integration test changes only initrd address
+property values in a local FDT copy; phone/firmware files remain unchanged.
+
+QEMU lacks the Gunyah watchdog SMC. Separate emulator-only EL3 firmware models that
+return, rejects other SMCs, and initializes the virtual GIC security state. Without
+that initialization, the kernel received no timer IRQs and stopped in early startup.
+The phone Image is unchanged. This does not validate the real secure firmware or
+physical display. No drives, USB devices or guest network interfaces are attached.
+
+`tools/preservation-tests/test-handoff.py` compares the actual shim FDT parser with
+the bounded host parser for synthetic and captured-stock fixtures under sanitizers.
+The host parser rejects every truncated synthetic fixture and invalid header ranges.
+This does not establish malformed-input safety for the older shim parser.
 
 The minimal preservation shim compiled successfully in CI run 42303381326. Its
 runtime payload validator passed sanitizer checks with the actual stock vendor

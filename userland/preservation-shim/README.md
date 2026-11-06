@@ -21,6 +21,26 @@ trace. Its payload deliberately fails the physical-phone memory profile. The
 emulator is a development diagnostic, not proof of phone compatibility or dual boot.
 All output, including extracted stock material, stays under ignored `out/`.
 
+`--shim-artifact` enters the verified, unchanged complete shim rather than XNU
+directly. It uses a demand-paged 40 GiB guest address space (`reserve=off`, no
+preallocation) to cover the required high 3 GiB RAM bank. It does not allocate
+40 GiB of physical host RAM. `qemu-monitor.S` is separate virtual EL3 firmware,
+not linked into the phone shim: it models the watchdog-disable SMC and returns
+unsupported for other services. This does not validate real Gunyah behavior.
+It sets the virtual GIC's single-security-state mode before nonsecure entry; the
+register semantics are described in [Arm's GIC security documentation](https://support.arm.com/documentation/100336/0106/operation/security).
+
+`--vendor-prefix` prepends locally saved vendor-ramdisk bytes. `--handoff-fdt`
+uses a saved stock FDT with only its initrd start/end values changed offline.
+Without that option the test uses a minimal synthetic FDT. Reports distinguish
+these cases, hash the inputs and compare all 1152 shim-generated boot-argument
+bytes against the reference. No guest boot image, bootloader or storage is modeled.
+
+The 120-second full-shim capture `out/preservation-qemu/20261106T231916.280563Z`
+reached the PID1 marker with the real vendor prefix and captured stock DTB. All
+1152 boot-argument bytes matched; no panic was visible. This leaves physical ABL
+placement, secure firmware, display and recovery unverified.
+
 The virtual profile disables Qualcomm hardware services through their existing
 switches. It requires kernel patch 0405 for `negronireboot=0`, which prevents PMIC
 reboot-channel mapping and persistent reason writes. Older kernels ignore that

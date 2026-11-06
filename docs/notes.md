@@ -2,6 +2,12 @@
 
 ## Current-owner preservation update, 2026-11-07
 
+- **[V]** Full unchanged shim integration reached PID1 in `out/preservation-qemu/20261106T231916.280563Z` (120 s): real vendor prefix, captured stock DTB with local initrd-address edits, high 3 GiB bank, all 1152 boot-argument bytes match, zero undecoded glyphs/no visible panic. Phone Image SHA remains `9b9a2a7e1833fee426be2a09530689ccb4daba3cd89f57b8a6c2bb1f282a8462`.
+- **[V]** Read-only live FDT `out/android-handoff/20261106T231318.768974Z`: 1,181,468 bytes; SHA `689dd6856fd967c07e97276b5d3c269ad2ab1327451711af3de454dda64c0167`; stock initrd `0xb690d000..0xb7ffee10`; high bank `0x840000000 + 3 GiB`. No phone write or reboot.
+- **[V]** QEMU Gunyah SMC is unsupported. Separate `qemu-monitor.S` models watchdog disable and rejects other SMCs. EL3 requires virtual GIC security initialization for timer IRQs; without it, early XNU stalled (captures 231305/231504). This is not physical firmware validation.
+- **[V]** Large anonymous guest RAM reservation initially failed. QEMU backend `reserve=off,prealloc=off` provides sparse 40 GiB address coverage; actual pages are demand-allocated. No host disk is exposed as guest storage.
+- **[V]** Handoff parser tests passed with sanitizers on real shim C code for valid synthetic+live FDTs; host parser bounds tests passed. Remaining: ABL v2 support/placement, physical display and recovery. No experimental hardware boot.
+
 - **[V]** Minimal shim CI 42303381326 and offline stock-DTB boot-container round-trip/runtime-prefix tests passed. No physical boot or flash.
 - **[V]** QEMU `_nc_init+0x2d8` is the port's RTC code (0203), not the name cache. Disassembly shows an SPMI read; `negronirtc=0` passes it.
 - **[V]** Next QEMU abort: `_nr_open+0xa0`, reboot preparation reading the absent PMIC arbiter. Patch 0405 provides `negronireboot=0` before MMIO.

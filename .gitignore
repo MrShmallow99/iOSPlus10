@@ -15,6 +15,7 @@ backup/
 scripts/backup/*
 !scripts/backup/inspect-android.ps1
 !scripts/backup/backup-android-boot.py
+!scripts/backup/inspect-android-handoff.py
 dumps/
 out/
 inputs/
