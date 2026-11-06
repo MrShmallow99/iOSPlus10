@@ -34,7 +34,7 @@ _start:
     svc #0x80
     b 2b
 
-.section __TEXT,__cstring,cstring_literals
+.section __TEXT,__const
 console_path:
     .asciz "/dev/console"
 ready_message:
