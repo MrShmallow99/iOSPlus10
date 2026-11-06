@@ -70,7 +70,7 @@ static inline int pp_validate(const void *buffer, uint64_t available,
     if (p->phys_base != UINT64_C(0x840000000) || p->mem_size != UINT64_C(0xc0000000)) return 0;
     uint64_t end = p->phys_base + p->mem_size;
     if (source_start < end && p->phys_base < source_end) return 0;
-    if (p->virt_base > UINT64_MAX - p->mem_size || (p->virt_base & UINT64_C(0x1ffffff)) || p->entry_va < p->virt_base ||
+    if (p->virt_base > UINT64_MAX - p->mem_size || (p->virt_base & UINT64_C(0x1ffffff)) || (p->entry_va & 3) || p->entry_va < p->virt_base ||
         p->kernel_end < p->virt_base || p->kernel_end - p->virt_base > p->mem_size ||
         (p->kernel_end & UINT64_C(0x3fff))) return 0;
     uint64_t header = sizeof(*p) + p->nsegs * sizeof(struct pp_segment);
@@ -81,7 +81,7 @@ static inline int pp_validate(const void *buffer, uint64_t available,
     unsigned entry_found = 0;
     for (uint32_t i = 0; i < p->nsegs; i++) {
         const struct pp_segment *s = &p->segs[i];
-        if (s->vmaddr < p->virt_base || s->vmsize == 0 || (s->vmsize & 7) ||
+        if (s->vmaddr < p->virt_base || (s->vmaddr & 7) || s->vmsize == 0 || (s->vmsize & 7) ||
             s->vmaddr - p->virt_base > p->mem_size || s->vmsize > p->mem_size - (s->vmaddr - p->virt_base) ||
             s->file_size > s->vmsize || (s->file_off & 7) || s->file_off < header || s->file_off > p->adt_off) return 0;
         uint64_t file_read = (s->file_size + 7) & ~UINT64_C(7);

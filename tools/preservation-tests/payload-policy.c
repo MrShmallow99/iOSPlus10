@@ -38,6 +38,10 @@ int main(int argc, char **argv)
     assert(!pp_validate(buffer, 1024, 0x90000000, 0x90000400, NULL));
     make(buffer); p->entry_va = p->virt_base;
     assert(!pp_validate(buffer, 1024, 0x90000000, 0x90000400, NULL));
+    make(buffer); p->entry_va++;
+    assert(!pp_validate(buffer, 1024, 0x90000000, 0x90000400, NULL));
+    make(buffer); p->segs[0].vmaddr++;
+    assert(!pp_validate(buffer, 1024, 0x90000000, 0x90000400, NULL));
     make(buffer); p->nsegs = 2; p->adt_off = 784;
     p->segs[0].file_off = 760; p->segs[1] = p->segs[0]; p->segs[1].file_off = 768;
     assert(!pp_validate(buffer, 1024, 0x90000000, 0x90000400, NULL));

@@ -119,6 +119,10 @@ def main():
         "negroni_memory_size_actual_offset": "0x478", "payload_command_line_bytes": 608,
         "negroni_payload_magic": "NEGRONIX", "complete_shim_built": True,
         "shim_image_sha256": image_hash, "shim_image_bytes": len(image),
+        "runtime_policy_sha256": hashlib.sha256((REPO / "userland/preservation-shim/preserve_payload.h").read_bytes().replace(b"\r\n", b"\n")).hexdigest(),
+        "preservation_main_sha256": hashlib.sha256((REPO / "userland/preservation-shim/main.c").read_bytes().replace(b"\r\n", b"\n")).hexdigest(),
+        "shim_patches": {p.name: hashlib.sha256(p.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+                         for p in sorted((REPO / "patches/shim").glob("*.patch"))},
         "internal_storage_uefi_probe_paths_linked": False,
         "phone_boot_image_created": False, "device_boot_approved": False}, indent=2) + "\n")
     print(f"PASS: direct-loader AArch64 compilation/static ABI assertions for negroni and sweet: {destination}")
