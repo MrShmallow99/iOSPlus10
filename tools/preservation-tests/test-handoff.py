@@ -56,6 +56,7 @@ int main(int argc, char **argv) {
     free(data); puts("PASS: real shim FDT parser matches bounded host parser");
 }
 '''
+    (REPO / "out").mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(dir=REPO / "out", prefix="handoff-test-") as temp:
         work = Path(temp)
         (work / "test.c").write_text(harness)
