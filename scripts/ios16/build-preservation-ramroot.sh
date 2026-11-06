@@ -18,7 +18,7 @@ hdiutil convert "$OUT/root.dmg" -format UDTO -o "$OUT/root.raw"
 mv "$OUT/root.raw.cdr" "$OUT/artifact/root.hfs"
 # macOS fsck_hfs needs a block device. Attach this host-created image read-only,
 # without mounting its filesystem, and always detach it on a failed check.
-hdiutil attach -nomount -readonly -plist "$OUT/artifact/root.hfs" > "$OUT/attachment.plist"
+hdiutil attach -nomount -readonly -plist "$OUT/root.dmg" > "$OUT/attachment.plist"
 RAMROOT_DEVICE=$(python3 -c 'import plistlib,sys; p=plistlib.load(open(sys.argv[1],"rb")); print(p["system-entities"][0]["dev-entry"])' "$OUT/attachment.plist")
 [[ "$RAMROOT_DEVICE" =~ ^/dev/disk[0-9]+$ ]] || { echo "unexpected RAM-root image device" >&2; exit 1; }
 trap 'hdiutil detach "$RAMROOT_DEVICE" >/dev/null || true' EXIT

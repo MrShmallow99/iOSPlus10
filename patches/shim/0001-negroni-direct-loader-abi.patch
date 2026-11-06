@@ -1,0 +1,67 @@
+--- a/shim/loader.c
++++ b/shim/loader.c
+@@ -12,7 +12,12 @@
+ #include "fdt.h"
+ #include "loader.h"
+ 
+-#define BOOT_LINE_LENGTH	608
++#define PAYLOAD_LINE_LENGTH	608
++#if defined(BOARD_NEGRONI)
++#define KERNEL_BOOT_LINE_LENGTH	1024
++#else
++#define KERNEL_BOOT_LINE_LENGTH	608
++#endif
+ #define PAGE_16K		0x4000UL
+ 
+ struct payload_seg {
+@@ -24,7 +29,7 @@
+ 	uint32_t version, nsegs;
+ 	uint64_t virt_base, entry_va, adt_off, adt_size, kernel_end;
+ 	uint64_t phys_base, mem_size;
+-	char cmdline[BOOT_LINE_LENGTH];
++	char cmdline[PAYLOAD_LINE_LENGTH];
+ 	struct payload_seg segs[];
+ };
+ 
+@@ -40,14 +45,19 @@
+ 	uint32_t machineType;
+ 	uint64_t deviceTreeP;
+ 	uint32_t deviceTreeLength;
+-	char CommandLine[BOOT_LINE_LENGTH];
++	char CommandLine[KERNEL_BOOT_LINE_LENGTH];
+ 	uint64_t bootFlags, memSizeActual;
+ };
+ 
+ _Static_assert(__builtin_offsetof(struct payload, segs) == 0x2a8, "payload header layout");
+ _Static_assert(__builtin_offsetof(struct boot_args, Video) == 40, "boot_args layout");
+ _Static_assert(__builtin_offsetof(struct boot_args, CommandLine) == 108, "boot_args layout");
++#if defined(BOARD_NEGRONI)
++_Static_assert(__builtin_offsetof(struct boot_args, memSizeActual) == 0x478, "negroni kernel memory-size ABI");
++_Static_assert(sizeof(struct boot_args) == 1152, "negroni boot_args layout");
++#else
+ _Static_assert(sizeof(struct boot_args) == 736, "boot_args layout");
++#endif
+ 
+ /* MMU off: everything is Device memory, so copy in aligned 8-byte words. */
+ static void copy64(uintptr_t dst, uintptr_t src, uint64_t n)
+@@ -67,7 +77,11 @@
+ 
+ static int magic_ok(const char *m)
+ {
++	#if defined(BOARD_NEGRONI)
++	static const char want[] = "NEGRONIX";
++#else
+ 	static const char want[] = "SWEETXNU";
++#endif
+ 	for (int i = 0; i < 8; i++)
+ 		if (m[i] != want[i])
+ 			return 0;
+@@ -176,7 +190,7 @@
+ 	ba->Video.v_depth = 32;
+ 	ba->deviceTreeP = adt_pa - pa_of_va_base;	/* xnu reads it with the MMU on: a VA */
+ 	ba->deviceTreeLength = (uint32_t)p->adt_size;
+-	for (int i = 0; i < BOOT_LINE_LENGTH; i++)
++	for (int i = 0; i < PAYLOAD_LINE_LENGTH; i++)
+ 		ba->CommandLine[i] = p->cmdline[i];
+ 	ba->memSizeActual = p->mem_size;
+ 	con_hex2("BOOTARG", "pa=", ba_pa, "top=", top);
