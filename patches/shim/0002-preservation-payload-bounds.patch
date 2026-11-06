@@ -1,0 +1,33 @@
+--- a/shim/loader.c
++++ b/shim/loader.c
+@@ -11,6 +11,9 @@
+ #include "console.h"
+ #include "fdt.h"
+ #include "loader.h"
++#if defined(PRESERVE_ANDROID)
++#include "preserve_payload.h"
++#endif
+ 
+ #define PAYLOAD_LINE_LENGTH	608
+ #if defined(BOARD_NEGRONI)
+@@ -141,10 +144,19 @@
+ 		return "no initrd in /chosen";
+ 	con_hex2("INITRD", "lo=", rd_start, "hi=", rd_end);
+ 
++#if defined(PRESERVE_ANDROID)
++	if (rd_end <= rd_start) return "invalid initrd range";
++	struct pp_layout verified;
++	const struct pp_payload *located = pp_find((const void *)rd_start, rd_end - rd_start, rd_start, &verified);
++	if (!located) return "no unique valid preservation RAM payload";
++	const struct payload *p = (const struct payload *)located;
++	/* File offsets are relative to the located payload, not the vendor prefix. */
++	rd_start = (uintptr_t)located;
++#else
+ 	if (fv_ok(rd_start))
+ 		return uefi_boot(dtb, rd_start, rd_end);
+-
+ 	const struct payload *p = (const struct payload *)rd_start;
++#endif
+ 	if (!magic_ok(p->magic))
+ 		return "no SWEETXNU payload";
+ 	if (p->version != 1 || (p->adt_off & 7) || (rd_start & 7))

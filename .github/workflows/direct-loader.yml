@@ -5,22 +5,31 @@ on:
     paths:
       - 'patches/shim/**'
       - 'scripts/shim/**'
+      - 'userland/preservation-shim/**'
+      - 'tools/preservation-tests/*payload*'
       - '.github/workflows/direct-loader.yml'
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 jobs:
   cross-compile:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
       - run: git submodule update --init --depth 1 external/slop
+      - run: gh run download 42300296420 --repo "$GITHUB_REPOSITORY" --name intermediate-ramroot-not-a-phone-boot-image --dir out/runtime-payload-test
+      - run: python3 tools/preservation-tests/test-payload.py --payload out/runtime-payload-test/kernel-ramroot.negronix
       - run: python3 scripts/shim/audit-preservation.py
       - uses: actions/upload-artifact@v4
         with:
           name: direct-loader-abi-audit-not-a-boot-image
-          path: out/direct-loader-audit/*/report.json
+          path: |
+            out/direct-loader-audit/*/report.json
+            out/direct-loader-audit/*/complete/*
           if-no-files-found: error
