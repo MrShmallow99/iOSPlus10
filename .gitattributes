@@ -1,0 +1,4 @@
+# Shell scripts run in Linux/WSL even when the checkout is made on Windows.
+*.sh text eol=lf
+# Unified-diff context legitimately starts with a space followed by source tabs.
+*.patch text eol=lf -whitespace

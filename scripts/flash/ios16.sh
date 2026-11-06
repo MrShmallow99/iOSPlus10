@@ -20,6 +20,10 @@
 #   active       set slot a active, then reboot
 # Restore any step: docs/backup-and-restore.md (stock images in ~/op10-backup/images).
 set -eu
+. "$(dirname "$0")/../lib/phone-policy.sh"
+if [ "${2:-}" = --yes ] && [ "${1:-}" != check ]; then
+  phone_require_destructive_policy
+fi
 . "$(dirname "$0")/../lib/env.sh"
 APPLE=${APPLE:-$HOME/op10-apple}
 I=$BACKUP/images

@@ -1,0 +1,56 @@
+name: Android preservation
+on:
+  push:
+    branches: [android-preservation]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: preservation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  host-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+          persist-credentials: false
+      - run: git submodule update --init --depth 1 external/slop
+      - run: python3 tools/preservation-tests/run.py
+  kernel:
+    needs: host-tests
+    runs-on: macos-15
+    timeout-minutes: 150
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+          persist-credentials: false
+      - run: git submodule update --init --depth 1 external/slop
+      - name: Select compiler and install host dependencies
+        run: |
+          xcodebuild -version
+          brew install jq gum bash cmake ninja
+      - name: Build experimental read-only kernel
+        run: bash scripts/kernel/ci-preservation.sh
+      - name: Upload verified experimental kernel
+        uses: actions/upload-artifact@v4
+        with:
+          name: experimental-preservation-kernel
+          path: out/preservation-ci/artifact/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preservation-build-evidence
+          path: |
+            out/preservation-ci/build.log
+            out/preservation-ci/verification.json
+          if-no-files-found: ignore
+          retention-days: 14

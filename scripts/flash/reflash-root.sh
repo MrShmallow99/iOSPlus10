@@ -11,6 +11,8 @@
 # Env: SAFE (default out/ios16-safe). Allowed partitions only (CLAUDE.md): boot_a, vendor_boot_a, vbmeta_a, dtbo_a,
 # userdata; slot a.
 set -eu
+. "$(dirname "$0")/../lib/phone-policy.sh"
+phone_require_destructive_policy
 TEST=${1:-}
 SAFE=${SAFE:-out/ios16-safe}
 F=scripts/flash/ios16.sh

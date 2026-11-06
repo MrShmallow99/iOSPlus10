@@ -12,6 +12,8 @@
 # --skip-userdata: only step 2-3 (e.g. after a new boot image; the iOS root stays).
 # ERASES Android user data (step 1). Way back: scripts/flash/restore.sh.
 set -eu
+. "$(dirname "$0")/../lib/phone-policy.sh"
+phone_require_destructive_policy
 . "$(dirname "$0")/../lib/env.sh"
 F=$REPO/scripts/flash/ios16.sh
 [ "${CONFIRM:-}" = yes ] || { echo "this writes boot_a, vendor_boot_a, vbmeta_a, dtbo_a and userdata: run with CONFIRM=yes" >&2; exit 1; }

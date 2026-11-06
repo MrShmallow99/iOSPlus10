@@ -5,6 +5,8 @@
 # Flashes the stock boot_a (or the Magisk one with --magisk), vendor_boot_a, dtbo_a, vbmeta_a from
 # ~/op10-backup/images, then `fastboot -w` (formats userdata; skip with --keep-userdata), set_active a.
 set -eu
+. "$(dirname "$0")/../lib/phone-policy.sh"
+phone_require_destructive_policy
 . "$(dirname "$0")/../lib/env.sh"
 I=$BACKUP/images
 [ "${CONFIRM:-}" = yes ] || { echo "this rewrites slot a boot partitions (and formats userdata): run with CONFIRM=yes" >&2; exit 1; }

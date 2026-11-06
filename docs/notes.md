@@ -3395,3 +3395,19 @@ Input: docs/audit/2026-10-26-metal-gl.md section 4 ("what remains"), the items t
 - 12377 API facts: `kmem_alloc`/`KMA_*` in `vm/vm_kern_xnu.h`; `struct vm_shared_region` in
   `vm/vm_shared_region_xnu.h`; no `vm_map_lock_read`/`vm_map_lookup_entry` (VM map range locks); `pid_hibernate`
   in `kern_proc.c`; `pset->primary_map` only with `CONFIG_SCHED_SMT`; the realtime CPU choice is in `sched_rt.c`.
+
+## Android preservation requirement (2026-11-06)
+
+This owner requires preservation of Android boot and data. No device access succeeded and no phone changes were made. See docs/android-preservation.md for verified installer and kernel write paths, the host ADB blocker, and implementation gates. scripts/backup/inspect-android.ps1 collects a read-only inventory; syntax parsed successfully, hardware execution is pending.
+
+### Inventory received and backup prepared
+
+Owner-run inventory confirms NE2213, NE2213_16.0.3.530(EX01), Android 16, unlocked slot A, Magisk uid=0, encrypted F2FS /data on dm-72, userdata=sda14, and 88G filesystem free. This is not raw free space. No phone writes or boots performed. Added scripts/backup/backup-android-boot.py for host-side, binary-safe copies of both boot chains, with size and before/after SHA-256 checks. Host mock checks passed for binary preservation, allowlist rejection, truncated transfer rejection, and hash mismatch rejection; no hardware backup has run yet. Direct agent ADB and WSL remain blocked; Docker engine unavailable. See docs/android-preservation.md.
+
+### Boot-chain backup completed and direct host access restored
+
+After the permission profile changed, reviewed unsandboxed ADB and WSL calls succeeded. Fixed exec-out quoting after two rejected 73-byte shell-error files. Completed and verified 14 boot-chain copies (1,065,746,432 bytes) in out/android-backup/20261106T205035.212783Z; all matched device SHA-256 before and after reading. No app/data backup, phone writes, reboots, slot changes, or restore test. Ubuntu WSL2 has git/tmux and GitHub access. Started preserve-sources tmux job for the three pinned kernel/loader submodules. Added LF attributes for shell scripts and normalized bg.sh/notify.sh after CRLF startup failure. XNU local build still needs macOS/Xcode, not supplied by WSL. See docs/android-preservation.md.
+
+### Android preservation host milestone (2026-11-06)
+
+Preserve-Android policy now blocks 12 mutations across old flash/restore/test/root/firmware workflows, including CONFIRM=yes and --yes. Added 0403 UFS command gate (no runtime override), read-only block device, persistent logger disabled. Reconstructed driver from 32 patches. Host tests in Ubuntu/GCC 15.2 passed with exit 0: mocked phone tools untouched, missing/invalid policy blocked, actual header compiled, all data-out/unknown SCSI commands rejected. This is not a full kernel build or phone test. Source SHA-256 2ad3efd52829041ed4ddf9e8ae504d4c4ba989265cc58bba498dadb262b94f5f. Loader/kernel/DarwinBoot source download jobs finished 0. DarwinBoot initrd input cap is 256 MiB; small RAM root is a candidate, full iOS root does not fit as-is. UEFI has USB host/storage drivers but persistent variable/binary-driver writes and XNU USB root are not proven safe. Do not boot yet. Apple build host/CI choice is pending owner input. Details: docs/android-preservation.md and patches/xnu/README-preserve-android.md.

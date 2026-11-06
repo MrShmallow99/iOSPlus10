@@ -36,6 +36,8 @@
 # The kernel reads the areas at boot: reboot after (scripts/net/ssh-phone.sh reboot).
 # shellcheck disable=SC2046  # "set -- $(area X)" splits "START COUNT" on purpose
 set -eu
+. "$(dirname "$0")/../lib/phone-policy.sh"
+if [ "${CONFIRM:-}" = yes ]; then phone_require_destructive_policy; fi
 . "$(dirname "$0")/../lib/env.sh"
 F=$OUT/firmware
 SSH=$REPO/scripts/net/ssh-phone.sh

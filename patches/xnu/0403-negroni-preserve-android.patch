@@ -1,0 +1,76 @@
+--- a/bsd/dev/negroni_ufs.c
++++ b/bsd/dev/negroni_ufs.c
+@@ -20,6 +20,7 @@
+  */
+ #if defined(ARM64_BOARD_CONFIG_NEGRONI)
+ #include <sys/param.h>
++#include "negroni_ufs_preserve.h"
+ #include <sys/systm.h>
+ #include <sys/buf.h>
+ #include <sys/conf.h>
+@@ -191,6 +192,10 @@
+ static int
+ ufs_scsi(const uint8_t *cdb, unsigned cdb_len, uint32_t len, bool write)
+ {
++	/* Reject before descriptor access, cache work, or a UFS doorbell. */
++	if (!negroni_ufs_preserve_allows(cdb, cdb_len, len, write)) {
++		return EROFS;
++	}
+ 	struct utrd *utrd = (struct utrd *)(su.dma + DMA_UTRL);
+ 	struct ucd *ucd = (struct ucd *)(su.dma + DMA_UCD);
+ 	uint64_t ucd_pa = su.dma_pa + DMA_UCD, bounce_pa = su.dma_pa + DMA_BOUNCE;
+@@ -813,7 +818,7 @@
+ 	devfs_make_node(su.bdev, DEVFS_BLOCK, UID_ROOT, GID_OPERATOR, 0640, "ufsroot0");
+ 	devfs_make_node(makedev(su.cmajor, 0), DEVFS_CHAR, UID_ROOT, GID_OPERATOR, 0640, "rufsroot0");
+ 	/* Only now, with the partition bounds known, can writes be allowed. */
+-	su.writable = (rw != 0);
++	su.writable = (rw != 0) && !NEGRONI_PRESERVE_ANDROID;
+ 	su.ready = true;
+ 	printf("NEGRONI UFS: \"%s\" on LUN %u: first block 0x%llx, %llu MiB, %s, DMA at 0x%llx\n",
+ 	    want, su.lun, su.first_block, su.nblocks * UFS_BLOCK >> 20,
+@@ -1961,6 +1966,10 @@
+ 	uint32_t on = 1;
+ 	thread_t thread;
+ 
++	if (NEGRONI_PRESERVE_ANDROID) {
++		printf("NEGRONI BOOTLOG: off (Android preservation)\n");
++		return;
++	}
+ 	PE_parse_boot_argn("negronilog", &on, sizeof(on));
+ 	if (!on) {
+ 		printf("NEGRONI BOOTLOG: off (negronilog=0)\n");
+--- /dev/null
++++ b/bsd/dev/negroni_ufs_preserve.h
+@@ -0,0 +1,32 @@
++/* Internal-UFS commands allowed while Android is preserved. No runtime override. */
++#ifndef NEGRONI_UFS_PRESERVE_H
++#define NEGRONI_UFS_PRESERVE_H
++#define NEGRONI_PRESERVE_ANDROID 1
++
++static inline int
++negroni_ufs_preserve_allows(const unsigned char *cdb, unsigned cdb_len,
++    unsigned len, int write)
++{
++    if (!cdb || write || cdb_len == 0 || len > (1u << 20)) {
++        return 0;
++    }
++    switch (cdb[0]) {
++    case 0x00: /* TEST UNIT READY, no medium mutation */
++        return cdb_len == 6 && len == 0 && cdb[1] == 0 && cdb[2] == 0 &&
++            cdb[3] == 0 && cdb[4] == 0 && cdb[5] == 0;
++    case 0x1b: /* Existing UFS Device W-LUN power-active request only */
++        return cdb_len == 6 && len == 0 && cdb[1] == 0 && cdb[2] == 0 &&
++            cdb[3] == 0 && cdb[4] == 0x10 && cdb[5] == 0;
++    case 0x28: { /* READ(10), using this driver's 4096-byte device blocks */
++        unsigned blocks;
++        if (cdb_len != 10 || cdb[1] != 0 || cdb[6] != 0 || cdb[9] != 0) {
++            return 0;
++        }
++        blocks = ((unsigned)cdb[7] << 8) | cdb[8];
++        return blocks != 0 && len == blocks * 4096u;
++    }
++    default: /* Includes WRITE, UNMAP, FORMAT, MODE SELECT and cache flush. */
++        return 0;
++    }
++}
++#endif

@@ -1,0 +1,11 @@
+--- a/iokit/IOKit/IORPC.h
++++ b/iokit/IOKit/IORPC.h
+@@ -205,6 +205,8 @@
+ 	IORPCMessageMach * message;
+ 	IORPCMessageMach * reply;
+ 	uint32_t           sendSize;
+ 	uint32_t           replySize;
++	/* Xcode 16 iig supplies this; the 8796 dispatcher keeps using message. */
++	IORPCMessage *     kernelContent;
+ };
+ typedef struct IORPC IORPC;

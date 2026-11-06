@@ -1,5 +1,17 @@
 # Plan and status
 
+## Current owner's requirement (2026-11-06)
+
+Preserve the connected NE2213's Android boot, installed apps, and app data. This supersedes
+the earlier owner's destructive install/test cycle below. Do not run those flash/restore
+instructions on this phone. Current work and evidence: [android-preservation.md](android-preservation.md).
+
+Host milestone: both boot chains backed up and verified; pinned loader/kernel sources fetched;
+host mutation workflows blocked by the preservation policy; XNU UFS read-only command gate
+added as 0403. Host integration and compiled policy tests passed. No full kernel compilation
+or experimental phone boot. Next: arrange the Apple kernel build environment, audit UEFI
+persistent writes, and develop a stock-compatible loader with an isolated small RAM root.
+
 Status date: 2026-10-27 (12:15).
 
 ## Priorities (2026-10-27 20:55, owner)

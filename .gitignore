@@ -11,6 +11,10 @@
 *.adt
 getvar*.txt
 backup/
+!scripts/backup/
+scripts/backup/*
+!scripts/backup/inspect-android.ps1
+!scripts/backup/backup-android-boot.py
 dumps/
 out/
 inputs/

@@ -5,6 +5,8 @@
 #   scripts/bg.sh test-boot scripts/flash/test-boot.sh out/ios16-everything [out/ios16-safe]
 # Get the phone to fastboot first: out/bin/op10tool ctl bootloader (from iOS or from the panic screen, patch 0360).
 set -eu
+. "$(dirname "$0")/../lib/phone-policy.sh"
+phone_require_destructive_policy
 T=${1:?usage: $0 TEST_OUT [SAFE_OUT]}
 SAFE=${2:-out/ios16-safe}
 [ -f "$T/boot_a.img" ] && [ -f "$SAFE/boot_a.img" ] || { echo "missing $T/boot_a.img or $SAFE/boot_a.img" >&2; exit 1; }
