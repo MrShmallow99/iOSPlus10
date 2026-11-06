@@ -30,6 +30,51 @@ free extents, inactive-slot bootability, or total physical RAM.
 
 ## Preservation development completed on the host
 
+### Successful kernel build and downloaded artifact
+
+GitHub run `42295405065` passed both host-tests and kernel jobs:
+https://github.com/MrShmallow99/iOSPlus10/actions/runs/42295405065
+
+Downloaded under `out/preservation-ci-run-42295405065/`. The ARM64 Mach-O kernel is
+18,124,712 bytes, SHA-256
+`46ab1bb7c625314d08a61bf28adcffc8b98445159fc8474374e6d0d0268ffe97`.
+`scripts/kernel/verify-preservation-artifact.py` verified its digest, Mach-O command bounds,
+compiled preservation log marker, source report, and experimental notice. The source report
+matches the audited UFS implementation. These checks do not prove whole-boot safety.
+Nothing was booted or flashed. The Xcode 16.4/0404 build compatibility experiment linked;
+its runtime ABI remains untested.
+
+### Candidate UEFI configuration (not compiled)
+
+Patch `patches/mu/0003-negroni-preserve-android.patch` removes internal UFS/SD drivers,
+USB mass-storage gadget, capsule runtime, Windows boot-order helper, and firmware-update /
+mass-storage apps from the selected board configuration. External USB host storage remains.
+It explicitly selects `PcdEmuVariableNvModeEnable=TRUE`; this setting was already true in
+the shared platform configuration. The pinned basecore source uses that PCD to select
+`InitEmuNonVolatileVariableStore` rather than the real-storage initialization path.
+
+`scripts/uefi/audit-preservation.py` reconstructs the configuration in `out/` from the pinned
+Mu commit. It accepts an existing patch only if the exact reverse check succeeds; the pinned
+Mu already contains the 0002 memory change. It checks the storage/variable/app selections and
+tests rejection after deliberately reintroducing UFSDxe. This passed on Windows and Ubuntu.
+The independent `UEFI preservation audit` workflow checks the same candidate on GitHub.
+This is a configuration audit, not an assertion that every binary Qualcomm driver is safe.
+
+### Actual device RAM and temporary boot blocker
+
+A read-only `/proc/meminfo` and `/proc/iomem` capture from this phone is saved in ignored
+`out/android-inventory/memory.txt`. MemTotal is 11,485,740 kB. The high System RAM range is
+`0x840000000..0xA7FFFFFFF`, so this NE2213 is the approximately 12 GB variant, not the
+8 GB NE2213 from the earlier port notes. No phone files or partitions were written.
+
+The ordinary header-v4 UEFI path relies on a DTB installed in vendor_boot and an ABL splash
+that remains visible. That path is still incompatible with our no-partition-write requirement.
+Upstream slop documents acceptance of a temporary header-v2 shim using the stock base DTB,
+but the panel went black and the initial test reset. Its direct NEGRONIX payload loader can
+place the kernel and a small RAM root without UEFI. This is another source-supported candidate
+for the first limited kernel milestone; it has not been built or tested here. A missing UFS
+node in its ADT avoids initializing the UFS driver. It does not deliver a full iOS filesystem.
+
 `config/phone-storage-policy` is `preserve-android`. The shared host policy now blocks the
 old full install, restore, root reflash, firmware-area write, test-boot, and individual
 mutating flash steps before any phone tools run. Missing/invalid policy also blocks writes.

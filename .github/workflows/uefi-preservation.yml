@@ -1,0 +1,26 @@
+name: UEFI preservation audit
+on:
+  push:
+    branches: [android-preservation]
+    paths:
+      - 'patches/mu/**'
+      - 'scripts/uefi/audit-preservation.py'
+      - '.github/workflows/uefi-preservation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  configuration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: git submodule update --init --depth 1 external/Mu-Silicium-negroni
+      - run: python3 scripts/uefi/audit-preservation.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uefi-preservation-configuration-audit
+          path: out/mu-preservation-audit/*/report.json
+          if-no-files-found: error

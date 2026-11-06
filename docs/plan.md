@@ -8,9 +8,12 @@ instructions on this phone. Current work and evidence: [android-preservation.md]
 
 Host milestone: both boot chains backed up and verified; pinned loader/kernel sources fetched;
 host mutation workflows blocked by the preservation policy; XNU UFS read-only command gate
-added as 0403. Host integration and compiled policy tests passed. No full kernel compilation
-or experimental phone boot. Next: arrange the Apple kernel build environment, audit UEFI
-persistent writes, and develop a stock-compatible loader with an isolated small RAM root.
+added as 0403. Host integration and compiled policy tests passed. Kernel build on the owner's
+fork passed (GitHub run 42295405065); downloaded artifact integrity verified. No experimental
+phone boot. Candidate UEFI preservation overlay and source-configuration audit are implemented;
+firmware is not compiled. Next: build/audit the firmware or direct shim path and develop a
+stock-compatible temporary loader with an isolated small RAM root. Never replace vendor_boot
+to obtain that first boot. Details and remaining limits are in android-preservation.md.
 
 Status date: 2026-10-27 (12:15).
 

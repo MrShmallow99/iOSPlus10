@@ -1,0 +1,140 @@
+--- a/Platforms/OnePlus/negroniPkg/Include/APRIORI.inc
++++ b/Platforms/OnePlus/negroniPkg/Include/APRIORI.inc
+@@ -42,8 +42,6 @@
+ 
+   INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
+ 
+-  INF Binaries/negroni/QcomPkg/Drivers/SdccDxe/SdccDxe.inf
+-  INF Binaries/negroni/QcomPkg/Drivers/UFSDxe/UFSDxe.inf
+ 
+   INF FatPkg/EnhancedFatDxe/Fat.inf
+ 
+@@ -68,7 +66,6 @@
+   INF EmbeddedPkg/RealTimeClockRuntimeDxe/RealTimeClockRuntimeDxe.inf
+   INF MdeModulePkg/Universal/PrintDxe/PrintDxe.inf
+   INF MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
+-  INF MdeModulePkg/Universal/CapsuleRuntimeDxe/CapsuleRuntimeDxe.inf
+   INF MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
+   INF MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
+ 
+@@ -81,7 +78,6 @@
+   INF MdeModulePkg/Bus/Usb/UsbKbDxe/UsbKbDxe.inf
+   INF MdeModulePkg/Bus/Usb/UsbMassStorageDxe/UsbMassStorageDxe.inf
+ 
+-  INF Binaries/negroni/QcomPkg/Drivers/UsbMsdDxe/UsbMsdDxe.inf
+   INF Binaries/negroni/QcomPkg/Drivers/UsbDeviceDxe/UsbDeviceDxe.inf
+ 
+   INF Binaries/negroni/QcomPkg/Drivers/UsbConfigDxe/UsbConfigDxe.inf
+--- a/Platforms/OnePlus/negroniPkg/Include/DXE.inc
++++ b/Platforms/OnePlus/negroniPkg/Include/DXE.inc
+@@ -14,7 +14,6 @@
+   INF Binaries/negroni/QcomPkg/Drivers/TzDxe/TzDxeLA.inf
+ 
+   INF MdeModulePkg/Universal/WatchdogTimerDxe/WatchdogTimer.inf
+-  INF MdeModulePkg/Universal/CapsuleRuntimeDxe/CapsuleRuntimeDxe.inf
+   INF MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf
+   INF EmbeddedPkg/EmbeddedMonotonicCounter/EmbeddedMonotonicCounter.inf
+   INF MdeModulePkg/Universal/ResetSystemRuntimeDxe/ResetSystemRuntimeDxe.inf
+@@ -47,7 +46,6 @@
+   INF FatPkg/EnhancedFatDxe/Fat.inf
+   INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
+ 
+-  INF Binaries/negroni/QcomPkg/Drivers/UFSDxe/UFSDxe.inf
+   INF Binaries/negroni/QcomPkg/Drivers/CmdDbDxe/CmdDbDxe.inf
+   INF Binaries/negroni/QcomPkg/Drivers/PwrUtilsDxe/PwrUtilsDxe.inf
+   INF Binaries/negroni/QcomPkg/Drivers/RpmhDxe/RpmhDxe.inf
+@@ -71,7 +69,6 @@
+ !endif
+   INF Binaries/negroni/QcomPkg/Drivers/GpiDxe/GpiDxe.inf
+   INF Binaries/negroni/QcomPkg/Drivers/SPIDxe/SPIDxe.inf
+-  INF Binaries/negroni/QcomPkg/Drivers/SdccDxe/SdccDxe.inf
+ 
+ !if $(USE_CUSTOM_DISPLAY_DRIVER) == 1
+   INF Binaries/negroni/QcomPkg/Drivers/DisplayDxe/DisplayDxe.inf
+@@ -91,7 +88,6 @@
+   INF MdeModulePkg/Bus/Usb/UsbMouseDxe/UsbMouseDxe.inf
+   INF MdeModulePkg/Bus/Usb/UsbMassStorageDxe/UsbMassStorageDxe.inf
+ 
+-  INF Binaries/negroni/QcomPkg/Drivers/UsbMsdDxe/UsbMsdDxe.inf
+   INF Binaries/negroni/QcomPkg/Drivers/UsbDeviceDxe/UsbDeviceDxe.inf
+ 
+   INF Binaries/negroni/QcomPkg/Drivers/UsbConfigDxe/UsbConfigDxe.inf
+--- a/Platforms/OnePlus/negroniPkg/negroni.dsc
++++ b/Platforms/OnePlus/negroniPkg/negroni.dsc
+@@ -21,6 +21,9 @@
+ !include WaipioPkg/WaipioPkg.dsc.inc
+ 
+ [PcdsFixedAtBuild]
++
++  # Preserve Android: UEFI variable updates stay in emulated RAM storage.
++  gEfiMdeModulePkgTokenSpaceGuid.PcdEmuVariableNvModeEnable|TRUE
+ 
+   gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x0F
+ 
+@@ -57,7 +60,6 @@
+   negroniPkg/Applications/NegroniXnuBoot/NegroniXnuBoot.inf
+   negroniPkg/Drivers/NegroniKeyInputDxe/NegroniKeyInputDxe.inf
+   negroniPkg/Drivers/NegroniTouchDxe/NegroniTouchDxe.inf
+-  negroniPkg/Drivers/NegroniWindowsFirstDxe/NegroniWindowsFirstDxe.inf
+   negroniPkg/Drivers/NegroniPcieDxe/NegroniPcieDxe.inf
+   negroniPkg/Applications/NegroniWifiDiag/NegroniWifiDiag.inf
+   MdeModulePkg/Bus/Usb/UsbMouseDxe/UsbMouseDxe.inf
+--- a/Platforms/OnePlus/negroniPkg/negroni.fdf
++++ b/Platforms/OnePlus/negroniPkg/negroni.fdf
+@@ -46,7 +46,6 @@
+ 
+   INF UniXNUPkg/Application/UniXNU/UniXNU.inf
+   INF UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.inf
+-  INF negroniPkg/Drivers/NegroniWindowsFirstDxe/NegroniWindowsFirstDxe.inf
+   INF negroniPkg/Drivers/NegroniPcieDxe/NegroniPcieDxe.inf
+   INF negroniPkg/Applications/NegroniWifiDiag/NegroniWifiDiag.inf
+ 
+@@ -62,7 +61,7 @@
+     SECTION UI = "Device Tree"
+   }
+ 
+-  !include QcomPkg/Extra.fdf.inc
++  !include Include/PreservationExtras.fdf.inc
+ 
+   !include Include/Frontpage.fdf.inc
+ 
+--- /dev/null
++++ b/Platforms/OnePlus/negroniPkg/Include/PreservationExtras.fdf.inc
+@@ -0,0 +1,37 @@
++# Preservation profile: no Qualcomm MassStorage or firmware-update applications.
++  #
++  # Remaining UEFI Drivers
++  #
++  INF MdeModulePkg/Universal/Acpi/BootGraphicsResourceTableDxe/BootGraphicsResourceTableDxe.inf
++  INF MdeModulePkg/Universal/SetupBrowserDxe/SetupBrowserDxe.inf
++
++  #
++  # UEFI Applications
++  #
++  INF MdeModulePkg/Application/BootManagerMenuApp/BootManagerMenuApp.inf
++  INF PcBdsPkg/MsBootPolicy/MsBootPolicy.inf
++
++  #
++  # RAW Files
++  #
++!if $(ENABLE_SECUREBOOT) == 1
++  FILE FREEFORM = PCD (gSiliciumPkgTokenSpaceGuid.PcdSiPolicyFile) {
++    SECTION RAW = SiliciumPkg/Include/Resources/SecureBoot/SiPolicy.p7b
++    SECTION UI = "SiPolicy.p7b"
++  }
++!endif
++
++  FILE FREEFORM = PCD (gOemPkgTokenSpaceGuid.PcdLogoFile) {
++    SECTION RAW = SiliciumPkg/Include/Resources/BootLogo.bmp
++    SECTION UI = "BootLogo.bmp"
++  }
++
++  FILE FREEFORM = PCD (gSiliciumPkgTokenSpaceGuid.PcdNoBootOSFile) {
++    SECTION RAW = SiliciumPkg/Include/Resources/NoBootOS.bmp
++    SECTION UI = "NoBootOS.bmp"
++  }
++
++  FILE FREEFORM = PCD (gSiliciumPkgTokenSpaceGuid.PcdMassStorageBmpFile) {
++    SECTION RAW = SiliciumPkg/Include/Resources/MassStorage.bmp
++    SECTION UI = "MassStorage.bmp"
++  }
