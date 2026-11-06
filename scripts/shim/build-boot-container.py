@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import shutil
 import struct
 import subprocess
 import sys
@@ -35,6 +36,8 @@ def main():
     parser.add_argument("--tools", type=Path, default=REPO / "out/tools/mkbootimg-preserve")
     parser.add_argument("--memory", type=Path, default=REPO / "out/android-inventory/memory.txt")
     args = parser.parse_args()
+    if not shutil.which("cc"):
+        raise RuntimeError("Run this builder in Linux/WSL with a native C compiler for runtime-policy tests")
     pin = subprocess.check_output(["git", "-C", str(args.tools), "rev-parse", "HEAD"], text=True).strip()
     if pin != MKBOOTIMG_PIN:
         raise ValueError("Expected the inspected Android 16 mkbootimg release commit")
@@ -138,12 +141,18 @@ def main():
     # A local-only fixture exercises the runtime locator with the actual vendor prefix.
     fixture = output / "stock-prefix-plus-ramroot.bin"
     fixture.write_bytes(prefix + payload.read_bytes() + bytes(4096))
+    test_report = output / "runtime-test.json"
+    subprocess.run([sys.executable, str(REPO / "tools/preservation-tests/test-payload.py"),
+                    "--payload", str(fixture), "--report", str(test_report)], check=True)
+    tested = json.loads(test_report.read_text())
+    if tested["payload_sha256"] != digest(fixture) or tested["runtime_policy_sha256"] != report["runtime_policy_sha256"]:
+        raise ValueError("Runtime test evidence does not match the fixture and built shim policy")
     result = {"backup_identity": identity, "vendor_backup_sha256": record["sha256"],
               "mkbootimg_commit": pin, "stock_dtb_sha256": digest(dtb), "shim_sha256": digest(image),
               "payload_sha256": digest(payload), "boot_image_sha256": digest(boot),
               "roundtrip_component_hashes_match": True, "requested_ranges": requested,
               "requested_ranges_in_recorded_system_ram": True, "actual_abl_placement_verified": False,
-              "runtime_stock_prefix_test_passed": False, "device_boot_approved": False}
+              "runtime_stock_prefix_test_passed": True, "device_boot_approved": False}
     (output / "report.json").write_text(json.dumps(result, indent=2) + "\n")
     (output / "DO-NOT-BOOT.txt").write_text("Offline candidate only. ABL placement, DTB/ramdisk handoff, display and recovery are unverified. No phone boot is approved.\n")
     print(f"PASS: offline v2 container component hashes, round-trip and requested-range checks: {output}")

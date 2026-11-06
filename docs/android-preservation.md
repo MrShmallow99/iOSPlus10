@@ -194,6 +194,21 @@ Shrinking userdata or repurposing another partition is not the chosen approach.
 
 ## Host access
 
+### Offline loader and emulator progress
+
+The minimal preservation shim compiled successfully in CI run 42303381326. Its
+runtime payload validator passed sanitizer checks with the actual stock vendor
+ramdisk prefix and the minimal RAM-root payload. An offline Android v2 container
+also passed component hash, round-trip and requested RAM-range checks. These checks
+do not verify ABL's actual placement, DTB selection or phone display handoff.
+
+Diskless QEMU execution reached kernel initialization. A 60-second run using CPU
+`max` then panicked in `_nc_init+0x2d8` with a kernel data abort. Repeating with
+`cortex-a76` produced the same panic. PID 1 has not been observed. The emulator uses
+its own virtual RAM profile, which the phone shim
+rejects; this failure must be investigated before considering hardware execution.
+No candidate has been flashed or booted, and the existing Android remains intact.
+
 Development fork: `https://github.com/MrShmallow99/iOSPlus10`, branch `android-preservation`.
 The root `Android preservation` workflow runs host tests first, then attempts an experimental
 kernel build on macos-15/Xcode 16.4. Patch 0404 adds the IORPC field expected by the newer
