@@ -15,6 +15,12 @@ firmware is not compiled. Next: build/audit the firmware or direct shim path and
 stock-compatible temporary loader with an isolated small RAM root. Never replace vendor_boot
 to obtain that first boot. Details and remaining limits are in android-preservation.md.
 
+RAM-root milestone: CI 42299679864 built a small signed static init, checked 32 MiB HFS+
+root, and intermediate no-UFS NEGRONIX payload. Downloaded hashes and filesystem contents
+verified locally. Direct-loader ABI fixes passed AArch64 object compilation in CI 42299680091.
+No complete shim/Android boot image or physical boot yet. Next: complete shim bounds/ABI
+validation and stock-bootloader temporary ramdisk/DTB handling. This is not a full iOS root.
+
 Status date: 2026-10-27 (12:15).
 
 ## Priorities (2026-10-27 20:55, owner)

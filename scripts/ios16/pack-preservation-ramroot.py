@@ -1,5 +1,6 @@
 """Pack and bound-check an intermediate direct-shim RAM-root payload. No phone access."""
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import struct
@@ -28,6 +29,30 @@ def main():
     executable = (destination / "launchd").read_bytes()
     if struct.unpack_from("<2I", executable) != (0xfeedfacf, 0x0100000c):
         raise ValueError("PID 1 must be an ARM64 Mach-O executable")
+    command_count, command_bytes = struct.unpack_from("<2I", executable, 16)
+    position = 32
+    commands = set()
+    for _ in range(command_count):
+        if position + 8 > min(len(executable), 32 + command_bytes):
+            raise ValueError("Truncated PID 1 load commands")
+        command, size = struct.unpack_from("<2I", executable, position)
+        if size < 8 or position + size > min(len(executable), 32 + command_bytes):
+            raise ValueError("Invalid PID 1 load command")
+        commands.add(command)
+        position += size
+    if 0x5 not in commands or 0x1d not in commands or commands & {0xc, 0xe, 0x80000018, 0x8000001f}:
+        raise ValueError("PID 1 must have a Unix-thread entry, a signature and no dynamic libraries/loader")
+    # Read the actual filesystem catalog, not just the source-folder copy.
+    spec = importlib.util.spec_from_file_location("preserve_hfs", REPO / "scripts/audio/hfs-extract.py")
+    hfs_reader = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(hfs_reader)
+    filesystem = hfs_reader.HFS(hfs_reader.Image(str(root)))
+    record = filesystem.lookup("/sbin/launchd")
+    if record is None or record[1] != 2:
+        raise ValueError("RAM filesystem is missing /sbin/launchd")
+    contents, _ = filesystem.file_data(record[0], record[2])
+    if contents != executable:
+        raise ValueError("RAM filesystem contains a different PID 1 executable")
     tree = mkadt.build(board="negroni", dram=(0x840000000, 0xC0000000), ufs=False)
     if any(node.name in ("negroni-ufs", "sweet-ufs") for node in walk(tree)):
         raise ValueError("RAM-root ADT must not expose UFS")
@@ -67,6 +92,7 @@ def main():
     (destination / "report.json").write_text(json.dumps({
         "kernel_sha256": hashlib.sha256(kernel.read_bytes()).hexdigest(),
         "root_sha256": hashlib.sha256(root_blob).hexdigest(), "root_bytes": len(root_blob),
+        "root_contains_matching_static_signed_pid1": True,
         "ufs_node_present": False, "physical_window": [hex(physical), hex(memory_size)],
         "top_of_kernel_data": hex(top), "payload": info,
         "phone_boot_image_created": False, "device_boot_approved": False,

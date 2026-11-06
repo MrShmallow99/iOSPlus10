@@ -30,6 +30,39 @@ free extents, inactive-slot bootability, or total physical RAM.
 
 ## Preservation development completed on the host
 
+### Intermediate RAM-root artifact and direct-loader ABI
+
+RAM-root run `42299679864` passed:
+https://github.com/MrShmallow99/iOSPlus10/actions/runs/42299679864
+
+It built a signed static ARM64 PID 1, a checked 32 MiB HFS+ filesystem, and a roughly 49 MiB
+intermediate `NEGRONIX` payload containing the known preservation kernel. No phone boot
+image is produced. The ADT has no UFS node; root is `md0`; disk logging and UFS writes are
+disabled in the arguments as well as in the kernel. No proprietary iOS userland is included.
+The generated tree warns that the donor `/product` node is absent; this minimal root does
+not supply the identity/services expected by the full iOS userland.
+
+Downloaded under `out/preservation-ramroot-run-42299679864/`; all four published artifact
+hashes matched. Stronger local repacking checks passed against the same filesystem: its
+catalog contains the exact generated PID 1, which has a Unix-thread entry, a signature, and
+no dynamic-library/loader dependency. Payload memory bounds and no-UFS checks passed.
+The stronger checks are now included in the CI packer for subsequent builds.
+
+The direct-loader audit found two incompatible upstream interfaces: the common shim accepts
+`SWEETXNU`, while the negroni packer writes `NEGRONIX`; and the shim writes the 608-byte
+boot-argument ABI while kernel patch 0363 expects 1024. The new shim patch fixes both for
+BOARD_NEGRONI while retaining the old sweet layout. It keeps the payload header's 608-byte
+command field separate, zero-filling the larger kernel field through the existing boot-args
+allocation. Static assertions require 1152-byte boot_args and memSizeActual at 0x478.
+
+Direct-loader run `42299680091` passed AArch64 object compilation for negroni and sweet:
+https://github.com/MrShmallow99/iOSPlus10/actions/runs/42299680091
+
+The patch is stored in the parent repo; pinned submodule sources remain unchanged. Next:
+compile and audit the complete shim, validate how the stock bootloader presents the combined
+ramdisk and DTB for a temporary boot, and plan a recoverable observation path. The existing
+generic test-boot script remains blocked. No execution of this RAM root has been observed.
+
 ### Successful kernel build and downloaded artifact
 
 GitHub run `42295405065` passed both host-tests and kernel jobs:
@@ -59,6 +92,8 @@ Mu already contains the 0002 memory change. It checks the storage/variable/app s
 tests rejection after deliberately reintroducing UFSDxe. This passed on Windows and Ubuntu.
 The independent `UEFI preservation audit` workflow checks the same candidate on GitHub.
 This is a configuration audit, not an assertion that every binary Qualcomm driver is safe.
+GitHub configuration audit run `42298071571` passed:
+https://github.com/MrShmallow99/iOSPlus10/actions/runs/42298071571
 
 ### Actual device RAM and temporary boot blocker
 
