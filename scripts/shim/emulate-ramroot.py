@@ -87,14 +87,19 @@ def main():
     parser.add_argument("--shim-artifact", type=Path, help="Execute the real shim instead of entering XNU directly")
     parser.add_argument("--vendor-prefix", type=Path, help="Local vendor ramdisk bytes to prepend in shim mode")
     parser.add_argument("--handoff-fdt", type=Path, help="Local stock FDT; replace only its initrd addresses for emulation")
+    parser.add_argument("--abl-layout", type=Path, help="Static ABL layout report; test inferred legacy-v2 placement")
     args = parser.parse_args()
     if not 1 <= args.seconds <= 180:
         raise ValueError("Choose a bounded 1..180 second emulator run")
-    if (args.vendor_prefix or args.handoff_fdt) and not args.shim_artifact:
+    if (args.vendor_prefix or args.handoff_fdt or args.abl_layout) and not args.shim_artifact:
         raise ValueError("A vendor prefix or handoff FDT requires complete-shim mode")
+    if args.abl_layout and args.vendor_prefix:
+        raise ValueError("The modeled legacy v2 path does not prepend vendor ramdisk bytes")
     subprocess.run([sys.executable, str(REPO / "scripts/kernel/verify-preservation-artifact.py"),
                     str(args.kernel_artifact)], check=True)
     kernel = args.kernel_artifact / "kernel.development.negroni"
+    if b"NEGRONI REBOOT: PMIC access off (negronireboot=0)" not in kernel.read_bytes():
+        raise ValueError("Minimal emulator profile requires kernel patch 0405")
     root = args.ramroot_artifact / "root.hfs"
     manifest = json.loads((args.ramroot_artifact / "report.json").read_text())
     if hashlib.sha256(root.read_bytes()).hexdigest() != manifest["root_sha256"]:
@@ -107,17 +112,11 @@ def main():
     tree = mkadt.build(board="negroni", qemu=True, dram=(physical, memory_size), ufs=False)
     tree_path = output / "qemu-only.adt"
     tree_path.write_bytes(adt.serialize(tree))
-    line = (args.ramroot_artifact / "cmdline.txt").read_text().strip()
-    # QEMU has no Qualcomm PMIC/SPMI arbiter. Use the port's existing soft-clock
-    # fallback rather than touching a physical MMIO address on this virtual board.
-    line += (" negronirtc=0 negronireboot=0 negronibatt=0 negronithermal=0"
-             " negronicpuperf=0 negronikeys=0 negronitouch=0 negroniusb=0 negronihap=0"
-             " negronifb_dpuprobe=0 negronifb_zerocopy=0 negronibl=0 negronifb_esd=0"
-             " negronicharge=1 negronifb_stats=0 negronitop=0")
+    line = (REPO / "config/preservation-ramroot-cmdline").read_text().strip()
     # Charge mode 0 is a diagnostic dry run that unconditionally samples the
     # physical key. Mode 1 returns before sampling when no charger boot trigger
     # exists. This virtual ADT has no PON log or androidboot.mode=charger.
-    if len(line.encode()) >= 608:
+    if len(line.encode()) >= 608 or "\n" in line or "\0" in line:
         raise ValueError("Emulator arguments exceed the payload command-line field")
     payload, info = mkpayload.build(str(kernel), str(tree_path), line, str(root))
     (output / "QEMU-ONLY.negronix").write_bytes(payload)
@@ -145,15 +144,27 @@ def main():
     stub_pa = 0x40200000
     (output / "stub.bin").write_bytes(struct.pack("<4I2Q", 0x58000080, 0x580000a1,
         0xd61f0020, 0xd503201f, ba_pa, entry + delta))
-    shim_info = None
+    shim_info, modeled_layout = None, None
     if args.shim_artifact:
         shim, shim_info = checked_shim(args.shim_artifact)
         shim_pa, initrd_pa, fdt_pa = 0xa8008000, 0xa9000000, 0xb0000000
         prefix = args.vendor_prefix.read_bytes() if args.vendor_prefix else b""
         if len(prefix) % 8 or len(prefix) > 64 * 1024**2:
             raise ValueError("Vendor prefix must be aligned and bounded")
-        combined = prefix + payload + bytes(4096)
-        if initrd_pa + len(combined) > fdt_pa:
+        combined = prefix + payload + (b"" if args.abl_layout else bytes(4096))
+        if args.abl_layout:
+            spec = importlib.util.spec_from_file_location("abl_layout", REPO / "scripts/shim/abl_layout.py")
+            layout_tools = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(layout_tools)
+            assumptions = json.loads(args.abl_layout.read_text())
+            if (assumptions["abl_pe_sha256"] != layout_tools.ABL_SHA
+                    or assumptions["actual_temporary_boot_placement_verified"] is not False):
+                raise ValueError("Select an unverified static model for the inspected ABL")
+            modeled_layout = layout_tools.raw_arm64_layout(shim.read_bytes()[:64], shim.stat().st_size,
+                len(combined), 4096, assumptions["firmware_region_base_inferred"],
+                assumptions["firmware_region_size_inferred"])
+            shim_pa, initrd_pa, fdt_pa = (modeled_layout[key] for key in ("shim", "ramdisk", "dtb"))
+        elif initrd_pa + len(combined) > fdt_pa:
             raise ValueError("Combined ramdisk overlaps the synthetic FDT")
         (output / "combined-initrd.bin").write_bytes(combined)
         fdt_blob = shim_fdt(initrd_pa, initrd_pa + len(combined))
@@ -169,11 +180,18 @@ def main():
                     raise ValueError("Unsupported live FDT initrd width")
                 fdt_blob[offset:offset + width] = value.to_bytes(width, "big")
             handoff.summary(fdt_blob)
+        if args.abl_layout and len(fdt_blob) > modeled_layout["dtb_reserved_bytes"]:
+            raise ValueError("Handoff FDT exceeds the modeled reservation")
+        ranges = [(shim_pa, shim.stat().st_size), (initrd_pa, len(combined)), (fdt_pa, len(fdt_blob))]
+        for i, (address, size) in enumerate(ranges):
+            if any(address < other + length and other < address + size for other, length in ranges[:i]):
+                raise ValueError("Overlapping emulated handoff components")
         (output / "shim-handoff.dtb").write_bytes(fdt_blob)
         (output / "stub.bin").write_bytes(struct.pack("<4I2Q", 0x58000080, 0x580000a1,
             0xd61f0020, 0xd503201f, fdt_pa, shim_pa))
         monitor = REPO / "userland/preservation-shim/qemu-monitor.S"
-        subprocess.run(["aarch64-linux-gnu-as", str(monitor), "-o", str(output / "monitor.o")], check=True)
+        subprocess.run(["aarch64-linux-gnu-as", "--defsym", f"SHIM_ENTRY={shim_pa}",
+                        "--defsym", f"FDT_ADDRESS={fdt_pa}", str(monitor), "-o", str(output / "monitor.o")], check=True)
         subprocess.run(["aarch64-linux-gnu-ld", "-Ttext=0x40200000", "-e", "_start",
                         str(output / "monitor.o"), "-o", str(output / "monitor.elf")], check=True)
         subprocess.run(["aarch64-linux-gnu-objcopy", "-O", "binary", str(output / "monitor.elf"),
@@ -219,6 +237,9 @@ def main():
                       handoff_fdt_sha256=hashlib.sha256(fdt_blob).hexdigest(),
                       source_fdt_sha256=hashlib.sha256(args.handoff_fdt.read_bytes()).hexdigest() if args.handoff_fdt else None,
                       actual_abl_placement_verified=False)
+        report["modeled_legacy_v2_layout"] = modeled_layout
+        if args.abl_layout:
+            report["layout_assumptions_sha256"] = hashlib.sha256(args.abl_layout.read_bytes()).hexdigest()
     process = None
     try:
         with (output / "stderr.txt").open("w") as errors:

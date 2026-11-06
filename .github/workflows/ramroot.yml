@@ -4,6 +4,7 @@ on:
     branches: [android-preservation]
     paths:
       - 'userland/preservation-init/**'
+      - 'config/preservation-ramroot-cmdline'
       - 'scripts/ios16/*preservation-ramroot*'
       - '.github/workflows/ramroot.yml'
   workflow_dispatch:
@@ -23,7 +24,7 @@ jobs:
           persist-credentials: false
       - run: git submodule update --init --depth 1 external/slop
       - name: Download known successful preservation kernel
-        run: gh run download 42295405065 --repo "$GITHUB_REPOSITORY" --name experimental-preservation-kernel --dir out/preservation-ramroot/kernel
+        run: gh run download 42306974447 --repo "$GITHUB_REPOSITORY" --name experimental-preservation-kernel --dir out/preservation-ramroot/kernel
       - name: Build standalone PID 1, RAM filesystem and intermediate payload
         run: bash scripts/ios16/build-preservation-ramroot.sh out/preservation-ramroot/kernel
       - uses: actions/upload-artifact@v4

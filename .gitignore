@@ -17,6 +17,7 @@ scripts/backup/*
 !scripts/backup/backup-android-boot.py
 !scripts/backup/inspect-android-handoff.py
 !scripts/backup/backup-android-gpt.py
+!scripts/backup/assess-android-slot-state.py
 dumps/
 out/
 inputs/

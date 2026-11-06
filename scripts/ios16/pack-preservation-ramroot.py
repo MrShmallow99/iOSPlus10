@@ -22,6 +22,8 @@ def walk(node):
 
 def main():
     kernel, destination = Path(sys.argv[1]), Path(sys.argv[2])
+    if b"NEGRONI REBOOT: PMIC access off (negronireboot=0)" not in kernel.read_bytes():
+        raise ValueError("Minimal profile requires the PMIC-disable kernel feature (0405)")
     root = destination / "root.hfs"
     root_blob = root.read_bytes()
     if not 0 < len(root_blob) <= 64 * 1024**2 or root_blob[1024:1026] not in (b"H+", b"HX"):
@@ -58,10 +60,9 @@ def main():
         raise ValueError("RAM-root ADT must not expose UFS")
     tree_path = destination / "negroni.adt"
     tree_path.write_bytes(adt.serialize(tree))
-    args = ("debug=0xc serial=3 cpus=1 keepsyms=1 -noprogress rd=md0 "
-            "ufsrw=0 negronilog=0 negroniram=0 negronimetal=0 negronignss=0 "
-            "negroniadsp=0 negronibt=0 negroniwlan=0 negronislpi=0 wdt=-1 "
-            "launchd_unsecure_cache=1 unentitled_ios_sim_launch=1 ignition_level=1")
+    args = (REPO / "config/preservation-ramroot-cmdline").read_text().strip()
+    if len(args.encode()) >= 608 or "\n" in args or "\0" in args:
+        raise ValueError("Invalid minimal RAM-root command line")
     payload, info = mkpayload.build(str(kernel), str(tree_path), args, str(root))
     virt, entry, adt_offset, adt_size, kernel_end, physical, memory_size = struct.unpack_from("<7Q", payload, 0x10)
     count = struct.unpack_from("<I", payload, 12)[0]

@@ -8,6 +8,11 @@ on:
       - 'userland/preservation-shim/**'
       - 'tools/preservation-tests/*payload*'
       - 'tools/preservation-tests/test-handoff.py'
+      - 'tools/preservation-tests/test-abl-layout.py'
+      - 'tools/preservation-tests/test-slot-state.py'
+      - 'tools/preservation-tests/test-gpt.py'
+      - 'scripts/backup/assess-android-slot-state.py'
+      - 'scripts/backup/backup-android-gpt.py'
       - 'scripts/backup/inspect-android-handoff.py'
       - '.github/workflows/direct-loader.yml'
   workflow_dispatch:
@@ -26,6 +31,9 @@ jobs:
           persist-credentials: false
       - run: git submodule update --init --depth 1 external/slop
       - run: python3 tools/preservation-tests/test-handoff.py
+      - run: python3 tools/preservation-tests/test-abl-layout.py
+      - run: python3 tools/preservation-tests/test-slot-state.py
+      - run: python3 tools/preservation-tests/test-gpt.py
       - run: gh run download 42300296420 --repo "$GITHUB_REPOSITORY" --name intermediate-ramroot-not-a-phone-boot-image --dir out/runtime-payload-test
       - run: python3 tools/preservation-tests/test-payload.py --payload out/runtime-payload-test/kernel-ramroot.negronix
       - run: python3 scripts/shim/audit-preservation.py

@@ -3,6 +3,12 @@
  * DTB and shim addresses match emulate-ramroot.py's virtual handoff fixture.
  */
 .text
+.ifndef SHIM_ENTRY
+.equ SHIM_ENTRY, 0xa8008000
+.endif
+.ifndef FDT_ADDRESS
+.equ FDT_ADDRESS, 0xb0000000
+.endif
 .global _start
 _start:
     msr daifset, #15
@@ -23,9 +29,9 @@ _start:
     msr scr_el3, x1
     mov x1, #0x3c5                 // EL1h, interrupts masked
     msr spsr_el3, x1
-    ldr x1, =0xa8008000
+    ldr x1, =SHIM_ENTRY
     msr elr_el3, x1
-    ldr x0, =0xb0000000
+    ldr x0, =FDT_ADDRESS
     isb
     eret
 .balign 2048
