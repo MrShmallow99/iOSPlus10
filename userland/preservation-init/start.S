@@ -14,7 +14,9 @@ _start:
     mov x19, x0
     adrp x1, ready_message@PAGE
     add x1, x1, ready_message@PAGEOFF
-    mov x2, #(ready_message_end - ready_message)
+    adrp x2, ready_message_end@PAGE
+    add x2, x2, ready_message_end@PAGEOFF
+    sub x2, x2, x1
     mov x16, #4                 // write to /dev/console only
     svc #0x80
 1:

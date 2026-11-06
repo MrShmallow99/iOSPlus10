@@ -2,6 +2,15 @@ name: Android preservation
 on:
   push:
     branches: [android-preservation]
+    paths:
+      - 'patches/xnu/**'
+      - 'scripts/kernel/**'
+      - 'tools/preservation-tests/**'
+      - 'scripts/flash/**'
+      - 'scripts/fw/write-areas.sh'
+      - 'scripts/lib/phone-policy.sh'
+      - 'config/phone-storage-policy'
+      - '.github/workflows/preservation.yml'
   workflow_dispatch:
 permissions:
   contents: read
