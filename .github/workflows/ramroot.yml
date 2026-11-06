@@ -1,0 +1,34 @@
+name: Experimental RAM root
+on:
+  push:
+    branches: [android-preservation]
+    paths:
+      - 'userland/preservation-init/**'
+      - 'scripts/ios16/*preservation-ramroot*'
+      - '.github/workflows/ramroot.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  ramroot:
+    runs-on: macos-15
+    timeout-minutes: 20
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: git submodule update --init --depth 1 external/slop
+      - name: Download known successful preservation kernel
+        run: gh run download 42295405065 --repo "$GITHUB_REPOSITORY" --name experimental-preservation-kernel --dir out/preservation-ramroot/kernel
+      - name: Build standalone PID 1, RAM filesystem and intermediate payload
+        run: bash scripts/ios16/build-preservation-ramroot.sh out/preservation-ramroot/kernel
+      - uses: actions/upload-artifact@v4
+        with:
+          name: intermediate-ramroot-not-a-phone-boot-image
+          path: out/preservation-ramroot/artifact/
+          if-no-files-found: error
+          retention-days: 14
