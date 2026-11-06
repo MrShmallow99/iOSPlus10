@@ -1,0 +1,14 @@
+--- a/shim/loader.c
++++ b/shim/loader.c
+@@ -149,6 +149,11 @@
+ 	struct pp_layout verified;
+ 	const struct pp_payload *located = pp_find((const void *)rd_start, rd_end - rd_start, rd_start, &verified);
+ 	if (!located) return "no unique valid preservation RAM payload";
++	extern char _head[], _end[];
++	uint64_t image_start = (uintptr_t)_head, image_end = (uintptr_t)_end;
++	if (image_end < image_start ||
++	    (image_start < located->phys_base + located->mem_size && located->phys_base < image_end))
++		return "kernel RAM window overlaps the running shim";
+ 	const struct payload *p = (const struct payload *)located;
+ 	/* File offsets are relative to the located payload, not the vendor prefix. */
+ 	rd_start = (uintptr_t)located;
