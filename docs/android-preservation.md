@@ -46,7 +46,8 @@ Downloaded under `out/preservation-ramroot-run-42299679864/`; all four published
 hashes matched. Stronger local repacking checks passed against the same filesystem: its
 catalog contains the exact generated PID 1, which has a Unix-thread entry, a signature, and
 no dynamic-library/loader dependency. Payload memory bounds and no-UFS checks passed.
-The stronger checks are now included in the CI packer for subsequent builds.
+The stronger checks also passed on GitHub in run `42300296420`:
+https://github.com/MrShmallow99/iOSPlus10/actions/runs/42300296420
 
 The direct-loader audit found two incompatible upstream interfaces: the common shim accepts
 `SWEETXNU`, while the negroni packer writes `NEGRONIX`; and the shim writes the 608-byte
