@@ -2,6 +2,8 @@
 
 ## Current-owner preservation update, 2026-11-07
 
+- **[V]** Clean CI direct-loader/handoff audit 42313247317 passed at 0f75732, including synthetic FDT bounds tests, real shim parser sanitizer test, payload tests and full shim compilation. Fixed a fresh-checkout test setup error by creating `out/` before its temporary directory. No kernel/phone Image code changed for that fix.
+
 - **[V]** ABL A/B read-only copies verified at `out/android-backup/20261106T232451.856224Z`. Extracted ARM64 PEs differ. Active A PE SHA `2ce7a5ee3cd35357e12b13041aea819fdce2c9feb333e83a400295cb182697db`; REA/Ghidra evidence exported and session closed. See docs/abl-preservation.md for Evidence IDs.
 - **[V]** Static ABL path: inferred CmdBoot `0x1bdec` -> image/auth `0x7760` -> legacy/v2 parser `0x25478`. V2 header size `0x67c` supported by parser, not proof of whole candidate acceptance/placement.
 - **[V]** CmdBoot also calls ClearUnbootable `0x49810` -> GPT updater `0x44bb0(1)`. Conditional metadata persistence exists. A temporary boot is not established as wholly read-only. No phone boot attempted.
