@@ -1,0 +1,20 @@
+diff --git a/bsd/dev/negroni_reboot.c b/bsd/dev/negroni_reboot.c
+--- a/bsd/dev/negroni_reboot.c
++++ b/bsd/dev/negroni_reboot.c
+@@ -164,6 +164,16 @@ nr_arb_open(void)
+ 		return nr_arb_ready;
+ 	}
+ 	nr_arb_attempted = true;
++	/* Virtual boards have no Qualcomm PMIC. Also allow a hardware bring-up
++	 * session to omit persistent reboot-reason and PS_HOLD accesses. All
++	 * channels share this gate; the plain PSCI reset/off paths remain. */
++	int enabled = 1;
++	(void)PE_parse_boot_argn("negronireboot", &enabled, sizeof(enabled));
++	if (!enabled) {
++		printf("NEGRONI REBOOT: PMIC access off (negronireboot=0)\n");
++		return false;
++	}
++
+ 	nr_core = ml_io_map(NR_CORE_PA, NR_CORE_SIZE);
+ 	nr_cnfg = ml_io_map(NR_CNFG_PA, 0x1000);
+ 	if (nr_core == 0 || nr_cnfg == 0) {

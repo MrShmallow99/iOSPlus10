@@ -21,7 +21,15 @@ verified locally. Direct-loader ABI fixes passed AArch64 object compilation in C
 No complete shim/Android boot image or physical boot yet. Next: complete shim bounds/ABI
 validation and stock-bootloader temporary ramdisk/DTB handling. This is not a full iOS root.
 
-Status date: 2026-10-27 (12:15).
+Current-owner update (2026-11-07): complete minimal shim CI 42303381326 and offline
+stock-DTB Android v2 container checks passed. No hardware boot. Diskless QEMU exposed
+two absent-PMIC accesses: RTC `_nc_init+0x2d8`, then reboot `_nr_open+0xa0` after
+using `negronirtc=0`. Patch 0405 adds `negronireboot=0` at the shared reboot-arbiter
+entry. Host tests verify zero MMIO when disabled and normal default behavior.
+Next: compile 0405 and repeat QEMU with RTC/reboot/battery disabled. PID1 remains
+unobserved. Bootloader placement/recovery and physical handoff remain unverified.
+
+Status date of earlier-owner sections: 2026-10-27 (12:15).
 
 ## Priorities (2026-10-27 20:55, owner)
 1. GPU acceleration working (Metal; 0389/0395/0398/0399 in test).

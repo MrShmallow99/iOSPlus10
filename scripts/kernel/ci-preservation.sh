@@ -20,6 +20,7 @@ cd "$WORK/dxb"
 bash build.sh 2>&1 | tee "$WORK/build.log"
 # A successful linker is insufficient: fail closed if the protection was skipped.
 python3 "$REPO/scripts/kernel/verify-preservation-source.py" "$WORK/dxb/xnu" "$WORK/verification.json"
+python3 "$REPO/tools/preservation-tests/test-reboot.py" --source-tree "$WORK/dxb/xnu"
 mkdir -p "$WORK/artifact"
 test -f fakeroot/System/Library/Kernels/kernel.development.negroni
 cp fakeroot/System/Library/Kernels/kernel.development.negroni "$WORK/artifact/"

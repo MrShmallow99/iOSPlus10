@@ -1,5 +1,6 @@
 """Reconstruct the UFS driver from pinned patches for a host-only storage audit."""
 import hashlib
+import argparse
 import json
 from pathlib import Path
 import subprocess
@@ -10,6 +11,9 @@ TARGET = "bsd/dev/negroni_ufs.c"
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--target", choices=(TARGET, "bsd/dev/negroni_reboot.c"), default=TARGET)
+    target = parser.parse_args().target
     destination = REPO / "out" / "preservation-audit" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
     destination.mkdir(parents=True)
     subprocess.run(["git", "init", "--quiet", str(destination)], check=True)
@@ -22,7 +26,7 @@ def main():
     patches.update((p.name, p) for p in (REPO / "patches/xnu").glob("*.patch"))
     applied = []
     for name, patch in sorted(patches.items()):
-        if ("+++ b/" + TARGET).encode() not in patch.read_bytes():
+        if ("+++ b/" + target).encode() not in patch.read_bytes():
             continue
         # The parent checkout was made by Windows Git; compare the same LF
         # patch bytes on both hosts without changing the pinned submodules.
@@ -31,17 +35,17 @@ def main():
         # Apply only this file. Dependencies on kernel headers are deliberately
         # absent: this is a source reconstruction, not a kernel compile check.
         result = subprocess.run(["git", "-C", str(destination), "apply", "--whitespace=nowarn",
-                                 "--include=" + TARGET,
+                                 "--include=" + target,
                                  "--include=bsd/dev/negroni_ufs_preserve.h", str(local_patch)], capture_output=True, text=True)
         if result.returncode:
-            raise RuntimeError(f"UFS reconstruction stopped at {name}:\n{result.stderr}")
+            raise RuntimeError(f"{target} reconstruction stopped at {name}:\n{result.stderr}")
         applied.append(name)
-    source = destination / TARGET
+    source = destination / target
     digest = hashlib.sha256(source.read_bytes()).hexdigest()
-    report = {"driver": TARGET, "sha256": digest, "applied": applied,
+    report = {"driver": target, "sha256": digest, "applied": applied,
               "kernel_compiled": False, "phone_booted": False}
     (destination / "report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    print(f"Reconstructed UFS driver from {len(applied)} patches: {source}")
+    print(f"Reconstructed {target} from {len(applied)} patches: {source}")
     print(f"SHA-256: {digest}")
     print("Source reconstruction only. No kernel compilation or phone access.")
 

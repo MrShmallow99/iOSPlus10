@@ -28,6 +28,7 @@ jobs:
           persist-credentials: false
       - run: git submodule update --init --depth 1 external/slop
       - run: python3 tools/preservation-tests/run.py
+      - run: python3 tools/preservation-tests/test-reboot.py
   kernel:
     needs: host-tests
     runs-on: macos-15

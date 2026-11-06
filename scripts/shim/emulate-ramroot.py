@@ -65,6 +65,9 @@ def main():
     tree_path = output / "qemu-only.adt"
     tree_path.write_bytes(adt.serialize(tree))
     line = (args.ramroot_artifact / "cmdline.txt").read_text().strip()
+    # QEMU has no Qualcomm PMIC/SPMI arbiter. Use the port's existing soft-clock
+    # fallback rather than touching a physical MMIO address on this virtual board.
+    line += " negronirtc=0 negronireboot=0 negronibatt=0"
     payload, info = mkpayload.build(str(kernel), str(tree_path), line, str(root))
     (output / "QEMU-ONLY.negronix").write_bytes(payload)
     virt, entry, tree_offset, tree_size, kernel_end, physical, memory_size = struct.unpack_from("<7Q", payload, 0x10)
@@ -106,6 +109,9 @@ def main():
                "-device", f"loader,addr={stub_pa:#x},cpu-num=0"]
     (output / "command.json").write_text(json.dumps(command, indent=2) + "\n")
     report = {"phone_contacted": False, "host_disks_or_usb_attached_to_guest": False,
+              "kernel_sha256": hashlib.sha256(kernel.read_bytes()).hexdigest(),
+              "root_sha256": hashlib.sha256(root.read_bytes()).hexdigest(),
+              "emulator_cpu": args.cpu, "emulator_boot_arguments": line,
               "emulation_only_ram_window": [hex(physical), hex(memory_size)],
               "physical_phone_boot_profile_compatible": False, "pid1_observed": False,
               "device_boot_approved": False, "payload": info}

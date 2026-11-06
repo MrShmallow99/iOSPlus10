@@ -204,7 +204,17 @@ do not verify ABL's actual placement, DTB selection or phone display handoff.
 
 Diskless QEMU execution reached kernel initialization. A 60-second run using CPU
 `max` then panicked in `_nc_init+0x2d8` with a kernel data abort. Repeating with
-`cortex-a76` produced the same panic. PID 1 has not been observed. The emulator uses
+`cortex-a76` produced the same panic. Disassembly and patch 0203 identify this as
+the Negroni PMIC clock initializer, not the similarly named filesystem name-cache
+code. The faulting instruction reads the Qualcomm SPMI arbiter, absent in QEMU.
+The emulator now requests the existing `negronirtc=0` software-clock fallback.
+That passed the first fault; the next abort was `_nr_open+0xa0`, accessing the same
+absent arbiter during reboot preparation. Patch 0405 adds `negronireboot=0` before
+any reboot-arbiter MMIO; it blocks SDAM reason and PS_HOLD access through that path.
+The default remains enabled. A compiled test of the reconstructed initializer
+verifies zero mappings/reads when disabled and normal initialization when absent.
+The emulator also disables the existing PMIC battery driver (`negronibatt=0`).
+PID 1 has not been observed. The emulator uses
 its own virtual RAM profile, which the phone shim
 rejects; this failure must be investigated before considering hardware execution.
 No candidate has been flashed or booted, and the existing Android remains intact.
