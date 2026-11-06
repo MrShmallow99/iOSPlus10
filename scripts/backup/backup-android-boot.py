@@ -7,9 +7,11 @@ import shutil
 import subprocess
 from datetime import datetime, timezone
 
-PARTITIONS = tuple(f"{name}_{slot}" for slot in "ab" for name in (
+BOOT_PARTITIONS = tuple(f"{name}_{slot}" for slot in "ab" for name in (
     "boot", "vendor_boot", "dtbo", "vbmeta", "vbmeta_system", "vbmeta_vendor", "recovery"
 ))
+ABL_PARTITIONS = ("abl_a", "abl_b")
+PARTITIONS = BOOT_PARTITIONS + ABL_PARTITIONS
 
 
 def text(adb, *args):
@@ -51,6 +53,7 @@ def copy_partition(adb, name, destination):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--adb", default=r"C:\platform-tools\adb.exe")
+    parser.add_argument("--abl-only", action="store_true", help="Read only both ABL images for offline firmware analysis")
     args = parser.parse_args()
     adb = args.adb
     if text(adb, "get-state") != "device":
@@ -63,9 +66,11 @@ def main():
     if shutil.disk_usage(destination).free < 3 * 1024**3:
         raise RuntimeError("At least 3 GiB of host free space is required")
     identity = text(adb, "shell", "getprop ro.product.model; getprop ro.build.display.id; getprop ro.boot.slot_suffix")
+    if args.abl_only and identity.splitlines()[:2] != ["NE2213", "NE2213_16.0.3.530(EX01)"]:
+        raise ValueError("ABL capture identity differs from the inspected owner device")
     (destination / "identity.txt").write_text(identity + "\n", encoding="utf-8")
     records = []
-    for name in PARTITIONS:
+    for name in (ABL_PARTITIONS if args.abl_only else BOOT_PARTITIONS):
         print(f"Reading and verifying {name}...", flush=True)
         records.append(copy_partition(adb, name, destination))
         # Only verified images enter the manifest. A failed run has no COMPLETE marker.

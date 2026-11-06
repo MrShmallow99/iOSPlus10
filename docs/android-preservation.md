@@ -10,6 +10,12 @@ and captured stock DTB (initrd addresses adjusted offline). This is not full iOS
 Watchdog and interrupt firmware are modeled; ABL's actual temporary-boot placement and recovery are still
 unverified. No experimental image has been booted or flashed on this phone.
 
+Static inspection of this phone's copied ABL found a legacy v2 parser and a
+conditional GPT attribute-update path inside the fastboot boot handler. A RAM
+boot is therefore not established as wholly read-only. Evidence and remaining
+checks: [stock ABL findings](abl-preservation.md). Both ABL copies are verified;
+their extracted executables differ. Slot B is not a verified fallback.
+
 Verified inventory: NE2213 / OP516FL1 / taro, `NE2213_16.0.3.530(EX01)`, Android 16,
 security patch 2026-06-01, unlocked (`ro.boot.flash.locked=0`), active slot `_a`, Magisk
 `uid=0`, file-based encryption. `/data` is F2FS on dm-72 with inline encryption;

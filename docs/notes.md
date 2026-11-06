@@ -2,6 +2,12 @@
 
 ## Current-owner preservation update, 2026-11-07
 
+- **[V]** ABL A/B read-only copies verified at `out/android-backup/20261106T232451.856224Z`. Extracted ARM64 PEs differ. Active A PE SHA `2ce7a5ee3cd35357e12b13041aea819fdce2c9feb333e83a400295cb182697db`; REA/Ghidra evidence exported and session closed. See docs/abl-preservation.md for Evidence IDs.
+- **[V]** Static ABL path: inferred CmdBoot `0x1bdec` -> image/auth `0x7760` -> legacy/v2 parser `0x25478`. V2 header size `0x67c` supported by parser, not proof of whole candidate acceptance/placement.
+- **[V]** CmdBoot also calls ClearUnbootable `0x49810` -> GPT updater `0x44bb0(1)`. Conditional metadata persistence exists. A temporary boot is not established as wholly read-only. No phone boot attempted.
+- **[V]** GPT capture completed `out/android-gpt/20261106T233309.678172Z`: six UFS LUNs, before/after SHA, header+entry CRCs and primary/backup equality passed. sde boot_a attrs `0x77000000000000` bit55 clear; boot_b `0xfb000000000000` bit55 set. Do not use B as an assumed fallback. No restore test/app-data backup.
+- **[V]** Initial GPT copy failed safely: adb exec-out merged dd's statistics into stdout (4171 instead of 4096 bytes). Remote stderr suppression fixed it; the failed capture has no COMPLETE marker.
+
 - **[V]** Full unchanged shim integration reached PID1 in `out/preservation-qemu/20261106T231916.280563Z` (120 s): real vendor prefix, captured stock DTB with local initrd-address edits, high 3 GiB bank, all 1152 boot-argument bytes match, zero undecoded glyphs/no visible panic. Phone Image SHA remains `9b9a2a7e1833fee426be2a09530689ccb4daba3cd89f57b8a6c2bb1f282a8462`.
 - **[V]** Read-only live FDT `out/android-handoff/20261106T231318.768974Z`: 1,181,468 bytes; SHA `689dd6856fd967c07e97276b5d3c269ad2ab1327451711af3de454dda64c0167`; stock initrd `0xb690d000..0xb7ffee10`; high bank `0x840000000 + 3 GiB`. No phone write or reboot.
 - **[V]** QEMU Gunyah SMC is unsupported. Separate `qemu-monitor.S` models watchdog disable and rejects other SMCs. EL3 requires virtual GIC security initialization for timer IRQs; without it, early XNU stalled (captures 231305/231504). This is not physical firmware validation.

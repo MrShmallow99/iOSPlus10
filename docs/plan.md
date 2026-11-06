@@ -41,6 +41,14 @@ models watchdog return and GIC initialization. Live FDT was read and hash-verifi
 without a phone write/reboot. Next: verify ABL support/placement and recovery before
 considering a phone RAM boot. Neither a physical boot nor dual boot is established.
 
+Stock ABL milestone: both bootloader images copied read-only; active A PE analyzed
+with REA/Ghidra. Its parser includes v2, but CmdBoot calls a conditional GPT updater
+via ClearUnbootable. GPT metadata is now copied/verified for all six UFS LUNs.
+Active A bit55 is clear; inactive B bit55 is set (unbootable). No phone RAM boot,
+slot change or flash. Next: audit placement and remaining persistent side effects;
+do not assume temporary boot or slot B is a proven safe fallback. Details and
+Evidence IDs: [abl-preservation.md](abl-preservation.md).
+
 Status date of earlier-owner sections: 2026-10-27 (12:15).
 
 ## Priorities (2026-10-27 20:55, owner)
