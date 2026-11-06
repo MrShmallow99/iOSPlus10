@@ -214,7 +214,20 @@ any reboot-arbiter MMIO; it blocks SDAM reason and PS_HOLD access through that p
 The default remains enabled. A compiled test of the reconstructed initializer
 verifies zero mappings/reads when disabled and normal initialization when absent.
 The emulator also disables the existing PMIC battery driver (`negronibatt=0`).
-PID 1 has not been observed. The emulator uses
+Kernel CI 42306974447 passed; its downloaded kernel SHA-256 is
+`95a222bfc1282e57307f593a4bd2f20028daeb7909b8503cced05a80359600c9`.
+Further QEMU runs passed those faults and mounted `PRESERVE_RAM_ROOT` on `md0`.
+Absent display-engine and backlight accesses are skipped with existing display
+switches. The charger default is a dry run that reads a physical key even with
+`negronikeys=0`; the emulator uses `negronicharge=1`, which returns immediately
+because this virtual board has neither a decoded PON log nor a charger boot arg.
+This is an emulator-only profile, not a phone boot recommendation.
+With periodic framebuffer statistics disabled, the 60-second run at
+`out/preservation-qemu/20261106T230156.348210Z` reached `/sbin/launchd` and printed
+`PRESERVE RAM ROOT: PID 1 reached.` Its decoded framebuffer had zero unknown glyphs
+and no visible panic. The preceding run's exception trace also showed EL0 SVCs.
+This validates the minimal init and RAM filesystem in emulation, not Apple userland
+or physical-device safety. The emulator uses
 its own virtual RAM profile, which the phone shim
 rejects; this failure must be investigated before considering hardware execution.
 No candidate has been flashed or booted, and the existing Android remains intact.

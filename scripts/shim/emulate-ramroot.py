@@ -67,7 +67,15 @@ def main():
     line = (args.ramroot_artifact / "cmdline.txt").read_text().strip()
     # QEMU has no Qualcomm PMIC/SPMI arbiter. Use the port's existing soft-clock
     # fallback rather than touching a physical MMIO address on this virtual board.
-    line += " negronirtc=0 negronireboot=0 negronibatt=0"
+    line += (" negronirtc=0 negronireboot=0 negronibatt=0 negronithermal=0"
+             " negronicpuperf=0 negronikeys=0 negronitouch=0 negroniusb=0 negronihap=0"
+             " negronifb_dpuprobe=0 negronifb_zerocopy=0 negronibl=0 negronifb_esd=0"
+             " negronicharge=1 negronifb_stats=0 negronitop=0")
+    # Charge mode 0 is a diagnostic dry run that unconditionally samples the
+    # physical key. Mode 1 returns before sampling when no charger boot trigger
+    # exists. This virtual ADT has no PON log or androidboot.mode=charger.
+    if len(line.encode()) >= 608:
+        raise ValueError("Emulator arguments exceed the payload command-line field")
     payload, info = mkpayload.build(str(kernel), str(tree_path), line, str(root))
     (output / "QEMU-ONLY.negronix").write_bytes(payload)
     virt, entry, tree_offset, tree_size, kernel_end, physical, memory_size = struct.unpack_from("<7Q", payload, 0x10)

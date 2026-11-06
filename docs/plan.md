@@ -26,8 +26,12 @@ stock-DTB Android v2 container checks passed. No hardware boot. Diskless QEMU ex
 two absent-PMIC accesses: RTC `_nc_init+0x2d8`, then reboot `_nr_open+0xa0` after
 using `negronirtc=0`. Patch 0405 adds `negronireboot=0` at the shared reboot-arbiter
 entry. Host tests verify zero MMIO when disabled and normal default behavior.
-Next: compile 0405 and repeat QEMU with RTC/reboot/battery disabled. PID1 remains
-unobserved. Bootloader placement/recovery and physical handoff remain unverified.
+CI 42306974447 compiled 0405 successfully. The emulator then mounted the HFS root
+and reached the minimal PID1 (`PRESERVE RAM ROOT: PID 1 reached.`) in a 60-second
+run with unsupported hardware paths and periodic framebuffer statistics disabled.
+Evidence: `out/preservation-qemu/20261106T230156.348210Z`. This is not Apple userland.
+Next: bootloader placement/recovery and physical DTB/ramdisk/display handoff remain
+unverified. Existing offline candidate is unapproved and uses the previous kernel.
 
 Status date of earlier-owner sections: 2026-10-27 (12:15).
 

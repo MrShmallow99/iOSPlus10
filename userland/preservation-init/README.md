@@ -4,7 +4,9 @@ This is a standalone ARM64 PID 1 for a small Darwin/XNU RAM filesystem. It opens
 `/dev/console`, writes a readiness line, and waits with `select`. It does not mount filesystems,
 open block devices, reboot, or load dynamic libraries. It is not Apple's launchd and does not
 start iOS services or an iOS interface. Kernel code-signing acceptance and runtime behavior
-have not been tested on the phone.
+have not been tested on the phone. A diskless QEMU run with kernel CI 42306974447
+mounted this HFS root, executed `/sbin/launchd` and displayed the readiness line
+for a 60-second run. Evidence is under `out/preservation-qemu/20261106T230156.348210Z`.
 
 The macOS `Experimental RAM root` workflow compiles and ad-hoc signs it, creates a 32 MiB
 HFS+ image, checks the filesystem through a read-only host image attachment, and packs the
@@ -17,4 +19,5 @@ Output is an intermediate `NEGRONIX` payload, **not an Android boot image**. No 
 is part of this build. The direct loader needs `patches/shim/0001-negroni-direct-loader-abi.patch`
 to accept its magic and match the compiled kernel's 1024-byte boot-argument layout. The
 `Direct loader ABI audit` compiles that loader object with static offset/size assertions;
-it does not build or validate a complete shim, Android boot container, or physical boot.
+the complete minimal shim is now also built and audited. The offline Android boot
+container checks and QEMU run do not validate a physical boot.

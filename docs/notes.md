@@ -1,5 +1,18 @@
 # Notes: what we learned (read this first)
 
+## Current-owner preservation update, 2026-11-07
+
+- **[V]** Minimal shim CI 42303381326 and offline stock-DTB boot-container round-trip/runtime-prefix tests passed. No physical boot or flash.
+- **[V]** QEMU `_nc_init+0x2d8` is the port's RTC code (0203), not the name cache. Disassembly shows an SPMI read; `negronirtc=0` passes it.
+- **[V]** Next QEMU abort: `_nr_open+0xa0`, reboot preparation reading the absent PMIC arbiter. Patch 0405 provides `negronireboot=0` before MMIO.
+- **[V]** Host tests execute the real reconstructed initializer: zero MMIO when disabled; normal/cached behavior when absent. LF-normalized source SHA-256 `7b3f6ff11d4e8acfb4c3c26fde8231f46199d89cc59fd1b76d78e51d6e9d607f`.
+- **[V]** Kernel build c27bfc7/run 42306974447 passed. Downloaded SHA-256 `95a222bfc1282e57307f593a4bd2f20028daeb7909b8503cced05a80359600c9`; UFS source hash is unchanged. Host and built-source PMIC tests passed.
+- **[V]** QEMU capture `out/preservation-qemu/20261106T225313.511997Z` passed both PMIC faults, then aborted in `AppleCLCD::zeroCopyInit+0x124` (Qualcomm MDSS probe). Existing `negronifb_dpuprobe=0 negronifb_zerocopy=0` skips it and retains the framebuffer console.
+- **[V]** `225530.777128Z` mounted HFS `PRESERVE_RAM_ROOT` on md0; next abort was physical backlight. `negronibl=0 negronifb_esd=0` passed that. Charger mode 0 dry-runs physical keys even with keys disabled; virtual mode 1 exits before key sampling because PON/ABL charger triggers are absent.
+- **[V]** `out/preservation-qemu/20261106T230156.348210Z`: 60 seconds, PID1 console marker observed, zero unknown glyphs, no visible panic. Disable framebuffer stats/top to keep the marker visible. Previous run `230000.678041Z` executed EL0 SVCs but stats scrolled the marker out. This is the minimal standalone init, not Apple launchd/full iOS.
+- **[V]** Next: stock ABL/header2 placement, DTB/ramdisk handoff, phone display and recovery remain unverified. Existing offline boot candidate uses the older kernel and is NOT approved; do not flash or boot it.
+- **[V]** Android/app data remain untouched. All framebuffer captures and extracted stock material stay in ignored `out/`. Details: docs/android-preservation.md.
+
 The knowledge base for this port. Agents: read this file before you start, and add what you learn
 before you stop (facts, numbers, errors and their fixes, decisions). Keep one fact per line, with a
 source. Mark each fact: **[V]** = seen (log, source, measurement), **[I]** = inference / guess.
