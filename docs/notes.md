@@ -2,6 +2,14 @@
 
 ## Current-owner preservation update, 2026-11-07
 
+- **[V]** Exact modeled-address emulator capture `out/preservation-qemu/20261107T000139.134514Z` passed (120 s, PID1 marker, all 1152 args match, no visible panic/unknown glyphs). Shim a8000000, rd b4eb7000, DTB b4cb6000; 5696 trailing zeros compensate for smaller virtual ADT. No vendor prefix. ABL/physical ADT/secure firmware still not executed/verified.
+- **[V]** Clean CI 035749b: direct-loader/layout/slot/GPT tests 42315354371 passed; updated RAM-root 42315354271 passed. Shared profile requires 0405 marker. Final emulator padding change also passed locally.
+
+- **[V/I]** Static ABL `0x23460` ignores v2 header load-address requests on its successful variable-query path; raw Image text_offset is added to firmware KernelBaseAddr, ramdisk allocated down from region end, DTB reserved below. Sizes/copy `0x22bd0/0x24b80` omit vendor prefix for legacy v2. Stock observations infer a8000000 + 10000000; variables were not read. See docs/abl-preservation.md for Evidence IDs/limits.
+- **[V]** Initial modeled legacy QEMU run `out/preservation-qemu/20261106T234901.092770Z` reached PID1, boot args match, no visible panic, no vendor prefix. Virtual payload shorter than physical ADT; its rd/DTB addresses were b4eb8000/b4cb7000. Next run pads the virtual payload to the physical candidate length to test b4eb7000/b4cb6000 exactly.
+- **[V]** Shared minimal profile config/preservation-ramroot-cmdline equals the successful emulator arguments. Repack `out/preservation-ramroot-local/20261106T235301.755865Z` keeps root/init bytes, uses known 0405 kernel. New candidate `out/preservation-boot-candidate/20261106T235413.689908Z` SHA 840a921a9ec94d4bab94b0f39498d503b911bd1e642d9323e894c50924ee060c passed host checks; still unapproved.
+- **[V/I]** Slot assessment `out/android-slot-assessment/20261106T235541.369323Z` verifies all 125 GPT entries, selects successful A; ClearUnbootable/active-flag routines predict no attribute changes in captured state. GetBootLun read branch confirmed. This is not a complete no-write proof. Evidence/snapshot placement-slot-final-evidence.json and placement-slot-snapshot.json; REA session closed after export.
+
 - **[V]** Clean CI direct-loader/handoff audit 42313247317 passed at 0f75732, including synthetic FDT bounds tests, real shim parser sanitizer test, payload tests and full shim compilation. Fixed a fresh-checkout test setup error by creating `out/` before its temporary directory. No kernel/phone Image code changed for that fix.
 
 - **[V]** ABL A/B read-only copies verified at `out/android-backup/20261106T232451.856224Z`. Extracted ARM64 PEs differ. Active A PE SHA `2ce7a5ee3cd35357e12b13041aea819fdce2c9feb333e83a400295cb182697db`; REA/Ghidra evidence exported and session closed. See docs/abl-preservation.md for Evidence IDs.

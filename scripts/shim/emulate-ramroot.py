@@ -144,7 +144,7 @@ def main():
     stub_pa = 0x40200000
     (output / "stub.bin").write_bytes(struct.pack("<4I2Q", 0x58000080, 0x580000a1,
         0xd61f0020, 0xd503201f, ba_pa, entry + delta))
-    shim_info, modeled_layout = None, None
+    shim_info, modeled_layout, modeled_padding = None, None, 0
     if args.shim_artifact:
         shim, shim_info = checked_shim(args.shim_artifact)
         shim_pa, initrd_pa, fdt_pa = 0xa8008000, 0xa9000000, 0xb0000000
@@ -160,6 +160,14 @@ def main():
             if (assumptions["abl_pe_sha256"] != layout_tools.ABL_SHA
                     or assumptions["actual_temporary_boot_placement_verified"] is not False):
                 raise ValueError("Select an unverified static model for the inspected ABL")
+            candidate_layout = assumptions["candidate_layout"]
+            expected_size = candidate_layout["ramdisk_end"] - candidate_layout["ramdisk"]
+            modeled_padding = expected_size - len(combined)
+            if not 0 <= modeled_padding <= 65536:
+                raise ValueError("Virtual payload cannot match the modeled candidate ramdisk length")
+            # The virtual ADT is smaller than the phone ADT. Pad its trailing
+            # bytes so the tested low load addresses match the candidate model.
+            combined += bytes(modeled_padding)
             modeled_layout = layout_tools.raw_arm64_layout(shim.read_bytes()[:64], shim.stat().st_size,
                 len(combined), 4096, assumptions["firmware_region_base_inferred"],
                 assumptions["firmware_region_size_inferred"])
@@ -238,6 +246,7 @@ def main():
                       source_fdt_sha256=hashlib.sha256(args.handoff_fdt.read_bytes()).hexdigest() if args.handoff_fdt else None,
                       actual_abl_placement_verified=False)
         report["modeled_legacy_v2_layout"] = modeled_layout
+        report["virtual_ramdisk_padding_bytes"] = modeled_padding
         if args.abl_layout:
             report["layout_assumptions_sha256"] = hashlib.sha256(args.abl_layout.read_bytes()).hexdigest()
     process = None

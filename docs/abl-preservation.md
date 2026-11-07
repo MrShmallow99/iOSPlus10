@@ -97,10 +97,102 @@ merged dd's remote statistics into the binary stream. The script now suppresses
 those statistics remotely and retains exact-size/hash checks. The failed folder
 has no COMPLETE marker and is not a valid backup.
 
+## Placement model and refreshed offline candidate
+
+Further static inspection found that the successful firmware-query path computes
+load addresses instead of copying the requested addresses from the v2 header:
+
+- `FUN_00022bd0`: legacy versions use the generic ramdisk size; vendor ramdisk
+  sizes are populated in the newer-header paths.
+- `FUN_00023460`: reads `KernelBaseAddr`/`KernelSize`, adds the raw ARM64 Image's
+  `text_offset` to the base when its runtime `image_size` is nonzero, allocates the
+  ramdisk downward from the region end with page rounding plus one extra page,
+  and reserves 2 MiB plus a page below it for DTB placement.
+- `FUN_00024b80`: prepends vendor/recovery ramdisks only for versions above 2.
+  It copies the legacy generic ramdisk and updates the FDT's initrd values.
+
+Evidence respectively:
+`ev_9537727306818f0e4926c3261fa3e5637988a128d280a741ca0c9c9f4daff09e`,
+`ev_629c0bc8011cd9e6d9390212dc69243d9b80abf7871f02751dbd2a24bc962a36`,
+`ev_9a87a7ca0d9952e5824229f9afc845b001cd76f478556fc7cd49ce8c031b7362`.
+The variable-query helper is `FUN_00027288`, Evidence
+`ev_a2dc1e61dea079a6b385da4033a625025c8a51d7d4ee0fa48ee4102bd1b24e88`.
+
+`scripts/shim/abl_layout.py` transcribes only the raw ARM64/successful-query case.
+It does not model gzip, 32-bit images, failed firmware queries or all overlays.
+The stock Image has text_offset 0 and a nonzero runtime size. Its file length
+exceeds that runtime size; the model checks the larger extent against overlap.
+
+Stock `/proc/iomem` kernel code at `0xa8000000`, verified boot/vendor ramdisk
+lengths, and live initrd start `0xb690d000` algebraically imply a firmware region
+`0xa8000000 + 0x10000000` under that path. The firmware variables were **not read**.
+This is an inference from the existing Android boot, not a temporary-boot trace.
+
+Refreshed unapproved candidate:
+`out/preservation-boot-candidate/20261106T235413.689908Z/UNAPPROVED-ramroot-boot-v2.img`.
+SHA-256: `840a921a9ec94d4bab94b0f39498d503b911bd1e642d9323e894c50924ee060c`.
+It uses the verified 0405 kernel from CI 42306974447 and the shared minimal profile
+in `config/preservation-ramroot-cmdline`. Reused HFS/init bytes are unchanged.
+Component hashes, Android-header round trip and runtime-validator sanitizer checks
+passed. No phone command is part of its build. Under the inferred region:
+
+| Component | Header request | Static model |
+|---|---|---|
+| Shim | `0xa8008000` | `0xa8000000` |
+| Generic ramdisk | `0xa9000000` | `0xb4eb7000` |
+| DTB | `0xb0000000` | `0xb4cb6000` |
+
+Model report: `out/abl-layout/20261106T235651.414092Z/report.json`.
+The candidate remains unapproved; ABL was not executed. DTB selection, real secure
+firmware, display and physical recovery remain unverified.
+
+The 120-second complete-shim QEMU capture
+`out/preservation-qemu/20261107T000139.134514Z` reached the PID1 marker at these
+exact modeled component addresses, with all 1152 boot-argument bytes matching,
+zero unknown glyphs and no visible panic. Its virtual ADT is smaller than the
+phone ADT, so 5,696 trailing zero bytes were added to match the candidate's generic
+ramdisk length. No vendor prefix was used. The guest still uses virtual GIC/timer
+data and emulator-only EL3 firmware; this is not execution of the Android boot
+container by ABL or validation of the physical ADT. The HFS/init and kernel bytes
+match the refreshed candidate's inputs.
+
+Clean CI at 035749b passed direct-loader/layout/slot/GPT host tests in run
+42315354371 and the updated RAM-root build in run 42315354271. The shared profile
+requires the 0405 PMIC-disable feature; packer/emulator reject kernels lacking its
+compiled marker. GPT/slot tests include changing and ambiguous-state cases.
+
+## Review of the captured slot state
+
+`FUN_00043848` selects already-active entries by priority and has a separate
+default-initialization path. `FUN_000499e8` avoids retry decrement when the selected
+slot is successful and not unbootable. `FUN_00048fd8` sets active bit 50 on names
+ending with the selected suffix and clears it on the other entries.
+
+Evidence:
+`ev_f184d4acee55356998862df840d4a687b1749dd6669d941c9c5e97032b10871f`,
+`ev_bab5ae8038a901fd549bbb79ef6e47340285a03f9e5a06ba4e537e8eb1a389cd`,
+`ev_18541972a41010afa5849dffda24d251ee8648597ca4a38dce42aa35236fd330`.
+The GUID-validation path calls `FUN_00020bf0` with argument 1, selecting its
+`Get BootLun` branch rather than `SetBootLun` (Evidence
+`ev_5d0a091137e89b70fd8961ea5c40c5268bceb338b31f6bf06ff9e5fbb4324a22`).
+
+The offline assessment of all 125 captured GPT entries selected A, successful,
+not unbootable; ClearUnbootable would not change its bit; active flags already
+match A across all entries. Thus those particular attribute updates are predicted
+to be no-ops **if that captured state is retained**. This does not prove the whole
+temporary-boot command avoids writes. Authentication, secure-world protocols and
+other failure paths are not completely audited. Static pseudocode also has
+outlined-helper/decompiler limitations; it is not a runtime observation.
+
+Assessment: `out/android-slot-assessment/20261106T235541.369323Z/report.json`.
+Evidence export/snapshot:
+`out/abl-analysis/20261106T232636.867171Z/placement-slot-final-evidence.json` and
+`placement-slot-snapshot.json`. The analysis session was closed after export.
+
 ## Remaining checks
 
 - GPT copies are verified, but restoration and fallback bootability remain untested.
-- Resolve actual kernel, ramdisk and DTB placement and image-selection behavior.
+- Validate actual temporary-boot placement and DTB selection beyond the static model.
 - Audit remaining persistent side effects through authentication, handoff and
   failure paths. Keep the bootloader image unchanged.
 - Establish a recoverable observation path and preserve app data. A boot-chain

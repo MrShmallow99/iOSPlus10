@@ -41,6 +41,20 @@ reached the PID1 marker with the real vendor prefix and captured stock DTB. All
 1152 boot-argument bytes matched; no panic was visible. This leaves physical ABL
 placement, secure firmware, display and recovery unverified.
 
+`--abl-layout` uses the static report from `scripts/shim/abl_layout.py` to test
+legacy placement rather than header-requested addresses. The report derives the
+firmware region from the stock capture; it does not execute ABL or read its
+variables. The mode omits vendor prefix and can pad the smaller virtual-ADT
+payload (at most 64 KiB) to the physical candidate's ramdisk length. This keeps
+the modeled low addresses exact while retaining virtual GIC/timer data. Reports
+state the padding, inferred layout and unresolved physical placement separately.
+
+The exact modeled-address capture `out/preservation-qemu/20261107T000139.134514Z`
+passed for 120 seconds: PID1 marker, matching boot arguments and no visible panic.
+It uses the same HFS/init/kernel inputs as the refreshed offline candidate, with
+virtual ADT data and 5696 trailing padding bytes. It does not execute ABL or prove
+that a phone temporary boot will use those addresses.
+
 The virtual profile disables Qualcomm hardware services through their existing
 switches. It requires kernel patch 0405 for `negronireboot=0`, which prevents PMIC
 reboot-channel mapping and persistent reason writes. Older kernels ignore that

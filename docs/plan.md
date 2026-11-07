@@ -31,7 +31,8 @@ and reached the minimal PID1 (`PRESERVE RAM ROOT: PID 1 reached.`) in a 60-secon
 run with unsupported hardware paths and periodic framebuffer statistics disabled.
 Evidence: `out/preservation-qemu/20261106T230156.348210Z`. This is not Apple userland.
 Next: bootloader placement/recovery and physical DTB/ramdisk/display handoff remain
-unverified. Existing offline candidate is unapproved and uses the previous kernel.
+unverified. At that milestone the offline candidate used the previous kernel;
+the refreshed unapproved candidate is described below.
 
 Full-shim milestone: the unchanged Image from CI 42303381326 also reached PID1
 using the real vendor prefix and captured stock DTB (only initrd address values
@@ -48,6 +49,18 @@ Active A bit55 is clear; inactive B bit55 is set (unbootable). No phone RAM boot
 slot change or flash. Next: audit placement and remaining persistent side effects;
 do not assume temporary boot or slot B is a proven safe fallback. Details and
 Evidence IDs: [abl-preservation.md](abl-preservation.md).
+
+Latest: static ABL placement model infers the stock region a8000000..b8000000
+and ignores the v2 header's requested addresses. The legacy path omits vendor
+prefix. Both modeled-placement QEMU runs reached PID1; the final capture
+`out/preservation-qemu/20261107T000139.134514Z` matches the refreshed candidate's
+exact modeled low addresses via trailing padding for its smaller virtual ADT.
+Boot arguments match; no visible panic. Shared minimal
+profile and 0405 kernel are repacked into an unapproved local candidate; round-trip,
+hash and runtime-validator checks passed. Across all 125 captured GPT entries,
+reviewed slot updates predict no attribute changes, conditional on retained state.
+Opaque/other persistent paths, actual DTB selection, display and recovery remain
+unverified. No phone reboot/flash/slot change occurred in this work.
 
 Status date of earlier-owner sections: 2026-10-27 (12:15).
 

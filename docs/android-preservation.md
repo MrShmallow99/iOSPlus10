@@ -16,6 +16,14 @@ boot is therefore not established as wholly read-only. Evidence and remaining
 checks: [stock ABL findings](abl-preservation.md). Both ABL copies are verified;
 their extracted executables differ. Slot B is not a verified fallback.
 
+Further review produced a static layout model consistent with the stock Android
+measurements; header address requests are not the resulting load addresses on its
+successful-query path. The modeled legacy path omits the vendor prefix. The
+refreshed candidate uses the newer PMIC-disable kernel and a shared minimal
+profile. It remains unapproved. Captured slot attributes predict no changes for
+the reviewed slot routines, but complete runtime write behavior remains unverified.
+Exact inputs, addresses and Evidence IDs are in the linked ABL findings.
+
 Verified inventory: NE2213 / OP516FL1 / taro, `NE2213_16.0.3.530(EX01)`, Android 16,
 security patch 2026-06-01, unlocked (`ro.boot.flash.locked=0`), active slot `_a`, Magisk
 `uid=0`, file-based encryption. `/data` is F2FS on dm-72 with inline encryption;

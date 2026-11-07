@@ -38,6 +38,7 @@ def raw_arm64_layout(image_header, image_bytes, ramdisk_bytes, page, region_base
     return {"shim": kernel, "ramdisk": ramdisk, "dtb": dtb,
             "successful_firmware_query_path_only": True,
             "ramdisk_end": ramdisk + ramdisk_bytes, "dtb_reserved_bytes": 0x200000,
+            "ramdisk_file_bytes": ramdisk_bytes,
             "image_runtime_bytes": runtime_bytes, "image_file_bytes": image_bytes, "image_text_offset": text_offset,
             "header_requested_addresses_used": False, "legacy_vendor_prefix_used": False}
 
