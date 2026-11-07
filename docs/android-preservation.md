@@ -4,11 +4,28 @@ Owner requirement, 2026-11-06: keep the existing Android boot and data. The owne
 unlocked, rooted OnePlus 10 Pro connected by USB. The owner ran the read-only inventory;
 results were read from `out/android-inventory`. Do not inherit the previous owner's backups.
 
-Current milestone (2026-11-07): the complete unchanged phone shim reaches the minimal
-HFS RAM root's standalone PID 1 in diskless QEMU, with the real vendor-ramdisk prefix
-and captured stock DTB (initrd addresses adjusted offline). This is not full iOS.
-Watchdog and interrupt firmware are modeled; ABL's actual temporary-boot placement and recovery are still
-unverified. No experimental image has been booted or flashed on this phone.
+Current milestone (2026-11-07): the physical NE2213 completed a temporary RAM boot
+of the minimal XNU/HFS system. The owner reported its HFS mount line and confirmed
+the exact `PRESERVE RAM ROOT: PID 1 reached.` marker. Android returned on slot A
+after a hardware restart. All 14 saved boot-chain partition hashes and all saved
+GPT regions still match; the owner confirmed a familiar app's saved data is intact.
+No flash, erase or slot-change command was issued. This is minimal standalone init,
+not full Apple userland or a persistent dual-boot installation.
+
+Test record: `out/phone-ram-test/20261107T001203.585728Z/` (preflight,
+bootloader-state.json, boot.log and observer-result.json). Read-only postcheck:
+`out/phone-ram-test/20261107T002144.807217Z/preflight.json`. Exact image SHA:
+`840a921a9ec94d4bab94b0f39498d503b911bd1e642d9323e894c50924ee060c`.
+`scripts/shim/ramroot-phone-test.py` admits only that image, binds the handset and
+separates preflight, bootloader entry, inspection and RAM boot. Old destructive
+installer/restore scripts remain blocked by the preservation policy.
+
+The bootloader reported hardware fastboot, unlocked, slot A successful/bootable
+and max download 805,306,368 bytes. `fastboot boot` sent 52,492 KiB and returned
+Booting OKAY. Readiness/mount observations came from the owner at the handset;
+USB is disabled in this profile, so no physical register/console capture was made.
+This validates one boot-and-return cycle on this exact phone/firmware/image. It
+does not prove every bootloader path write-free or provide a full app-data backup.
 
 Static inspection of this phone's copied ABL found a legacy v2 parser and a
 conditional GPT attribute-update path inside the fastboot boot handler. A RAM
@@ -20,7 +37,8 @@ Further review produced a static layout model consistent with the stock Android
 measurements; header address requests are not the resulting load addresses on its
 successful-query path. The modeled legacy path omits the vendor prefix. The
 refreshed candidate uses the newer PMIC-disable kernel and a shared minimal
-profile. It remains unapproved. Captured slot attributes predict no changes for
+profile. It remains experimental; its first controlled hardware test is recorded
+above. Captured slot attributes predict no changes for
 the reviewed slot routines, but complete runtime write behavior remains unverified.
 Exact inputs, addresses and Evidence IDs are in the linked ABL findings.
 

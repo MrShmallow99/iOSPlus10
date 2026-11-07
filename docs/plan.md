@@ -6,6 +6,19 @@ Preserve the connected NE2213's Android boot, installed apps, and app data. This
 the earlier owner's destructive install/test cycle below. Do not run those flash/restore
 instructions on this phone. Current work and evidence: [android-preservation.md](android-preservation.md).
 
+**Current result, 2026-11-07:** native temporary RAM boot succeeded on the connected
+NE2213. The owner confirmed the HFS RAM-root mount and exact PID1 marker. Hardware
+restart returned Android on slot A. Read-only postcheck verified all 14 boot-chain
+partition hashes and all saved GPT regions unchanged; the owner confirmed a familiar
+app's saved data intact. No flash/erase/slot-change command. Test record:
+`out/phone-ram-test/20261107T001203.585728Z/`; postcheck:
+`out/phone-ram-test/20261107T002144.807217Z/preflight.json`.
+
+This establishes one native minimal-XNU/RAM-root boot and return, not full iOS or
+a persistent boot menu. Next: a repeatable hardware observation channel, then an
+isolated larger root/backend for userland. Keep Android/data and the old destructive
+entry-point blocks. The history below records earlier limits at each host milestone.
+
 Host milestone: both boot chains backed up and verified; pinned loader/kernel sources fetched;
 host mutation workflows blocked by the preservation policy; XNU UFS read-only command gate
 added as 0403. Host integration and compiled policy tests passed. Kernel build on the owner's
@@ -50,7 +63,7 @@ slot change or flash. Next: audit placement and remaining persistent side effect
 do not assume temporary boot or slot B is a proven safe fallback. Details and
 Evidence IDs: [abl-preservation.md](abl-preservation.md).
 
-Latest: static ABL placement model infers the stock region a8000000..b8000000
+Pre-hardware model milestone: static ABL placement model infers the stock region a8000000..b8000000
 and ignores the v2 header's requested addresses. The legacy path omits vendor
 prefix. Both modeled-placement QEMU runs reached PID1; the final capture
 `out/preservation-qemu/20261107T000139.134514Z` matches the refreshed candidate's
@@ -60,7 +73,7 @@ profile and 0405 kernel are repacked into an unapproved local candidate; round-t
 hash and runtime-validator checks passed. Across all 125 captured GPT entries,
 reviewed slot updates predict no attribute changes, conditional on retained state.
 Opaque/other persistent paths, actual DTB selection, display and recovery remain
-unverified. No phone reboot/flash/slot change occurred in this work.
+unverified at that stage. The subsequent physical result is recorded above.
 
 Status date of earlier-owner sections: 2026-10-27 (12:15).
 

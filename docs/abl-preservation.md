@@ -1,8 +1,9 @@
 # Stock ABL and Android preservation
 
 This is static firmware evidence from this owner's NE2213, firmware
-`NE2213_16.0.3.530(EX01)`, active slot A. No experimental phone boot, flash,
-slot switch, firmware execution or partition write was performed.
+`NE2213_16.0.3.530(EX01)`, active slot A. Static work initially executed no phone
+firmware. A later controlled physical RAM-boot test is recorded below. No
+flash, erase or slot-switch command was issued.
 
 ## Identity and method
 
@@ -60,7 +61,8 @@ The names below describe inferred roles; `FUN_...` are Ghidra's actual names.
 Consequently, `fastboot boot` is not established as a wholly read-only operation
 on this firmware. These are static observations, not a runtime trace. Other
 bootloader write paths, secure-firmware effects and error/fallback paths remain
-unreviewed. The existing no-phone-boot decision remains in effect.
+unreviewed. The later controlled test observed unchanged boot/GPT hashes for this
+particular state; that does not eliminate conditional paths in other states.
 
 ## Current GPT metadata backup
 
@@ -143,8 +145,9 @@ passed. No phone command is part of its build. Under the inferred region:
 | DTB | `0xb0000000` | `0xb4cb6000` |
 
 Model report: `out/abl-layout/20261106T235651.414092Z/report.json`.
-The candidate remains unapproved; ABL was not executed. DTB selection, real secure
-firmware, display and physical recovery remain unverified.
+At the modeling milestone, ABL had not executed this candidate. A subsequent
+controlled physical trial is recorded below. The image remains experimental;
+physical load addresses and broader secure-firmware behavior remain unmeasured.
 
 The 120-second complete-shim QEMU capture
 `out/preservation-qemu/20261107T000139.134514Z` reached the PID1 marker at these
@@ -189,9 +192,25 @@ Evidence export/snapshot:
 `out/abl-analysis/20261106T232636.867171Z/placement-slot-final-evidence.json` and
 `placement-slot-snapshot.json`. The analysis session was closed after export.
 
+## First physical trial
+
+The candidate was sent with `fastboot boot` after a fresh read-only identity,
+boot-image and GPT-hash preflight. ABL returned Booting OKAY. The owner reported
+the HFS RAM-root mount and confirmed the exact PID1 readiness line. Thus this
+firmware accepted and handed off this v2 image far enough for minimal init to
+start. Physical load addresses were not measured directly.
+
+After the owner's hardware restart, Android returned on A. All 14 boot partition
+hashes and all captured primary/backup GPT region hashes remained unchanged.
+The owner confirmed a familiar app retained its saved data. This is evidence for
+one state/image/cycle, not a universal no-write proof or full-data restore test.
+Records: `out/phone-ram-test/20261107T001203.585728Z/` and postcheck
+`out/phone-ram-test/20261107T002144.807217Z/preflight.json`.
+
 ## Remaining checks
 
-- GPT copies are verified, but restoration and fallback bootability remain untested.
+- GPT copies are verified; Android A returned after one RAM test. GPT restoration
+  and inactive B fallback bootability remain untested.
 - Validate actual temporary-boot placement and DTB selection beyond the static model.
 - Audit remaining persistent side effects through authentication, handoff and
   failure paths. Keep the bootloader image unchanged.

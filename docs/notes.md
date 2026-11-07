@@ -2,6 +2,11 @@
 
 ## Current-owner preservation update, 2026-11-07
 
+- **[V, user-mediated]** First physical RAM boot succeeded: owner reported `hfs: mounted PRESERVE_RAM_ROOT on device b(1, 0)` and confirmed exact `PRESERVE RAM ROOT: PID 1 reached.` marker. No host console/register capture because USB is disabled. Minimal standalone init, not Apple launchd/UI.
+- **[V]** Image SHA 840a921a9ec94d4bab94b0f39498d503b911bd1e642d9323e894c50924ee060c. Bound preflight `out/phone-ram-test/20261107T001203.585728Z` matched 14 boot partitions and all GPT regions. Bootloader: hardware fastboot, unlocked, A successful/not-unbootable, download max805306368. `fastboot boot` sent52492KiB, Booting OKAY, 2.195s. No flash/erase/set-active command.
+- **[V]** Owner used hardware restart; Android ADB returned. Postcheck `out/phone-ram-test/20261107T002144.807217Z/preflight.json` passed: firmware/slot A unchanged, all14 boot-chain hashes and all GPT region hashes match original backups. Owner confirmed a familiar app's saved data intact. observer-result.json records both stages; serial binding stays ignored under out/.
+- **[V]** Dedicated `scripts/shim/ramroot-phone-test.py` pins this candidate; it does not unblock old flashing workflows. No permanent dual boot/full iOS UI. Next: repeatable observation channel and isolated larger userland backend. Do not erase Android/data or switch to unbootable B.
+
 - **[V]** Exact modeled-address emulator capture `out/preservation-qemu/20261107T000139.134514Z` passed (120 s, PID1 marker, all 1152 args match, no visible panic/unknown glyphs). Shim a8000000, rd b4eb7000, DTB b4cb6000; 5696 trailing zeros compensate for smaller virtual ADT. No vendor prefix. ABL/physical ADT/secure firmware still not executed/verified.
 - **[V]** Clean CI 035749b: direct-loader/layout/slot/GPT tests 42315354371 passed; updated RAM-root 42315354271 passed. Shared profile requires 0405 marker. Final emulator padding change also passed locally.
 

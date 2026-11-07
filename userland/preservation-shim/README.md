@@ -67,6 +67,11 @@ artifact directory. It waits for CI success, downloads only the experimental
 kernel artifact, then performs one bounded emulator run. `GH_EXECUTABLE` selects
 the GitHub CLI; Windows `.exe` downloads use a converted Windows destination.
 
-No script here flashes, changes slots or boots the phone. Android app data has not
-been backed up by these tools. Do not use a candidate on hardware until its remaining
-handoff and recovery requirements have been resolved.
+The separate `ramroot-phone-test.py` controls one experimental candidate:
+preflight reads Android; explicit stages enter/inspect fastboot and issue
+`fastboot boot`. It binds the handset, checks current boot/GPT hashes, and requires
+unlocked, successful slot A and sufficient download space. It has no flash, erase
+or slot-change command. A physical trial reached the owner-observed PID1 marker
+and returned Android; post-test boot/GPT hashes matched. Records:
+`out/phone-ram-test/20261107T001203.585728Z/` and postcheck `20261107T002144.807217Z`.
+Android app data is not backed up by these tools; no permanent dual boot is installed.
